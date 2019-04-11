@@ -335,8 +335,7 @@ var tmpl = template.Must(template.New("form").Parse(`
 			<p><label for=text>Text:</label>
 				<input id=text name=text value='{{.Text}}'>
 			<p><input type=submit value='Update'>
-				<input type=checkbox id=print name=print>
-				<label for=print>Print label</label>
+				<input type=submit name=print value='Update and Print'>
 		</fieldset></form>
 	</td>
 	</tr></table>
