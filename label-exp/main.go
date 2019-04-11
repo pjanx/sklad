@@ -49,6 +49,28 @@ func (s *scaler) At(x, y int) color.Color {
 	return s.image.At(x/s.scale, y/s.scale)
 }
 
+// leftRotate is a 90 degree rotating image.Image wrapper.
+type leftRotate struct {
+	image image.Image
+}
+
+// ColorModel implements image.Image.
+func (lr *leftRotate) ColorModel() color.Model {
+	return lr.image.ColorModel()
+}
+
+// Bounds implements image.Image.
+func (lr *leftRotate) Bounds() image.Rectangle {
+	r := lr.image.Bounds()
+	// Min is inclusive, Max is exclusive.
+	return image.Rect(r.Min.Y, -(r.Max.X - 1), r.Max.Y, -(r.Min.X - 1))
+}
+
+// At implements image.Image.
+func (lr *leftRotate) At(x, y int) color.Color {
+	return lr.image.At(-y, x)
+}
+
 // -----------------------------------------------------------------------------
 
 func decodeBitfieldErrors(b byte, errors [8]string) []string {
@@ -289,11 +311,10 @@ func printLabel(src image.Image) error {
 
 var font *bdf.Font
 
-// TODO: By rotating the label we can make it smaller, as an alternate mode.
 func genLabel(text string, width int) image.Image {
 	// Create a scaled bitmap of the QR code.
 	qrImg, _ := qr.Encode(text, qr.H, qr.Auto)
-	qrImg, _ = barcode.Scale(qrImg, 306, 306)
+	qrImg, _ = barcode.Scale(qrImg, width, width)
 	qrRect := qrImg.Bounds()
 
 	// Create a scaled bitmap of the text label.
@@ -316,6 +337,45 @@ func genLabel(text string, width int) image.Image {
 
 	target := image.Rect(
 		(width-scaledTextRect.Dx())/2, qrRect.Dy()+10,
+		combinedRect.Max.X, combinedRect.Max.Y)
+	draw.Draw(combinedImg, target, &scaledTextImg, scaledTextRect.Min, draw.Src)
+	return combinedImg
+}
+
+func genLabelForHeight(text string, height int) image.Image {
+	// Create a scaled bitmap of the text label.
+	textRect, _ := font.BoundString(text)
+	textImg := image.NewRGBA(textRect)
+	draw.Draw(textImg, textRect, image.White, image.ZP, draw.Src)
+	font.DrawString(textImg, image.ZP, text)
+
+	// TODO: Make it possible to choose scale, or use some heuristic.
+	scaledTextImg := scaler{image: textImg, scale: 3}
+	//scaledTextImg := scaler{image: textImg, scale: 3}
+	scaledTextRect := scaledTextImg.Bounds()
+
+	remains := height - scaledTextRect.Dy() - 20
+
+	width := scaledTextRect.Dx()
+	if remains > width {
+		width = remains
+	}
+
+	// Create a scaled bitmap of the QR code.
+	qrImg, _ := qr.Encode(text, qr.H, qr.Auto)
+	qrImg, _ = barcode.Scale(qrImg, remains, remains)
+	qrRect := qrImg.Bounds()
+
+	// Combine.
+	combinedRect := image.Rect(0, 0, width, height)
+	combinedImg := image.NewRGBA(combinedRect)
+	draw.Draw(combinedImg, combinedRect, image.White, image.ZP, draw.Src)
+	draw.Draw(combinedImg,
+		combinedRect.Add(image.Point{X: (width - qrRect.Dx()) / 2, Y: 0}),
+		qrImg, image.ZP, draw.Src)
+
+	target := image.Rect(
+		(width-scaledTextRect.Dx())/2, qrRect.Dy()+20,
 		combinedRect.Max.X, combinedRect.Max.Y)
 	draw.Draw(combinedImg, target, &scaledTextImg, scaledTextRect.Min, draw.Src)
 	return combinedImg
@@ -361,7 +421,9 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		params.Width = 306 // Default to 29mm tape.
 	}
 
+	// TODO: Possibly just remove the for-width mode.
 	label := genLabel(params.Text, params.Width)
+	label = &leftRotate{image: genLabelForHeight(params.Text, params.Width)}
 	if r.FormValue("print") != "" {
 		if err := printLabel(label); err != nil {
 			log.Println("print error:", err)
