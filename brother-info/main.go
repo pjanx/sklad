@@ -1,10 +1,9 @@
 package main
 
 import (
-	"io"
 	"log"
-	"os"
-	"time"
+
+	"janouch.name/sklad/ql"
 )
 
 func decodeBitfieldErrors(b byte, errors [8]string) []string {
@@ -15,25 +14,6 @@ func decodeBitfieldErrors(b byte, errors [8]string) []string {
 		}
 	}
 	return result
-}
-
-// -----------------------------------------------------------------------------
-
-type brotherStatus struct {
-	errors []string
-}
-
-// TODO: What exactly do we need? Probably extend as needed.
-func decodeStatusInformation(d []byte) brotherStatus {
-	var status brotherStatus
-	status.errors = append(status.errors, decodeBitfieldErrors(d[8], [8]string{
-		"no media", "end of media", "cutter jam", "?", "printer in use",
-		"printer turned off", "high-voltage adapter", "fan motor error"})...)
-	status.errors = append(status.errors, decodeBitfieldErrors(d[9], [8]string{
-		"replace media", "expansion buffer full", "communication error",
-		"communication buffer full", "cover open", "cancel key",
-		"media cannot be fed", "system error"})...)
-	return status
 }
 
 // -----------------------------------------------------------------------------
@@ -157,50 +137,22 @@ func printStatusInformation(d []byte) {
 }
 
 func main() {
-	// Linux usblp module, located in /drivers/usb/class/usblp.c
-	// (at least that's where the trails go, I don't understand the code)
-	f, err := os.OpenFile("/dev/usb/lp0", os.O_RDWR, 0)
+	printer, err := ql.Open()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer f.Close()
-
-	// Flush any former responses in the printer's queue.
-	for {
-		dummy := make([]byte, 32)
-		if _, err := f.Read(dummy); err == io.EOF {
-			break
-		}
+	if printer == nil {
+		log.Fatalln("no suitable printer found")
 	}
+	defer printer.Close()
 
-	// Clear the print buffer.
-	invalidate := make([]byte, 400)
-	if _, err := f.Write(invalidate); err != nil {
+	if err := printer.Initialize(); err != nil {
 		log.Fatalln(err)
 	}
 
-	// Initialize.
-	if _, err := f.WriteString("\x1b\x40"); err != nil {
+	status, err := printer.GetStatus()
+	if err != nil {
 		log.Fatalln(err)
-	}
-
-	// Request status information.
-	if _, err := f.WriteString("\x1b\x69\x53"); err != nil {
-		log.Fatalln(err)
-	}
-
-	// We need to poll the device.
-	status := make([]byte, 32)
-	for {
-		if n, err := f.Read(status); err == io.EOF {
-			time.Sleep(10 * time.Millisecond)
-		} else if err != nil {
-			log.Fatalln(err)
-		} else if n < 32 {
-			log.Fatalln("invalid read")
-		} else {
-			break
-		}
 	}
 
 	printStatusInformation(status)

@@ -18,6 +18,7 @@ import (
 	"github.com/boombuler/barcode/qr"
 
 	"janouch.name/sklad/bdf"
+	"janouch.name/sklad/ql"
 )
 
 // scaler is a scaling image.Image wrapper.
@@ -233,55 +234,28 @@ func printLabel(src image.Image) error {
 
 	// ---
 
-	// Linux usblp module, located in /drivers/usb/class/usblp.c
-	// (at least that's where the trails go, I don't understand the code)
-	f, err := os.OpenFile("/dev/usb/lp0", os.O_RDWR, 0)
+	printer, err := ql.Open()
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
-	// Flush any former responses in the printer's queue.
-	for {
-		dummy := make([]byte, 32)
-		if _, err := f.Read(dummy); err == io.EOF {
-			break
-		}
+	if printer == nil {
+		return errors.New("no suitable printer found")
 	}
+	defer printer.Close()
 
-	// Clear the print buffer.
-	invalidate := make([]byte, 400)
-	if _, err := f.Write(invalidate); err != nil {
+	if err := printer.Initialize(); err != nil {
 		return err
 	}
 
-	// Initialize.
-	if _, err := f.WriteString("\x1b\x40"); err != nil {
+	status, err := printer.GetStatus()
+	if err != nil {
 		return err
 	}
 
-	// Request status information.
-	if _, err := f.WriteString("\x1b\x69\x53"); err != nil {
-		return err
-	}
-
-	// We need to poll the device.
-	status := make([]byte, 32)
-	for {
-		if n, err := f.Read(status); err == io.EOF {
-			time.Sleep(10 * time.Millisecond)
-		} else if err != nil {
-			return err
-		} else if n < 32 {
-			return errors.New("invalid read")
-		} else {
-			break
-		}
-	}
 	printStatusInformation(status)
 
 	// Print the prepared data.
-	if _, err := f.Write(data); err != nil {
+	if _, err := printer.File.Write(data); err != nil {
 		return err
 	}
 
@@ -294,7 +268,7 @@ func printLabel(src image.Image) error {
 		if time.Now().Sub(start) > 3*time.Second {
 			break
 		}
-		if n, err := f.Read(status); err == io.EOF {
+		if n, err := printer.File.Read(status); err == io.EOF {
 			time.Sleep(100 * time.Millisecond)
 		} else if err != nil {
 			return err
