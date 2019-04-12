@@ -261,20 +261,27 @@ func handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	if len(os.Args) != 3 {
+		log.Fatalf("usage: %s ADDRESS BDF-FILE\n", os.Args[0])
+	}
+
+	address, bdf_path := os.Args[1], os.Args[2]
+
 	var err error
-	fi, err := os.Open("../../ucs-fonts-75dpi100dpi/100dpi/luBS24.bdf")
+	fi, err := os.Open(bdf_path)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	font, err = bdf.NewFromBDF(fi)
-	if err != nil {
+	if err := fi.Close(); err != nil {
 		log.Fatalln(err)
 	}
-	if err := fi.Close(); err != nil {
+	if err != nil {
 		log.Fatalln(err)
 	}
 
 	log.Println("starting server")
 	http.HandleFunc("/", handle)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(address, nil))
 }
