@@ -4,7 +4,6 @@ import (
 	"errors"
 	"html/template"
 	"image"
-	"image/color"
 	"image/draw"
 	"image/png"
 	"log"
@@ -16,61 +15,9 @@ import (
 	"github.com/boombuler/barcode/qr"
 
 	"janouch.name/sklad/bdf"
+	"janouch.name/sklad/imgutil"
 	"janouch.name/sklad/ql"
 )
-
-// scaler is a scaling image.Image wrapper.
-type scaler struct {
-	image image.Image
-	scale int
-}
-
-// ColorModel implements image.Image.
-func (s *scaler) ColorModel() color.Model {
-	return s.image.ColorModel()
-}
-
-// Bounds implements image.Image.
-func (s *scaler) Bounds() image.Rectangle {
-	r := s.image.Bounds()
-	return image.Rect(r.Min.X*s.scale, r.Min.Y*s.scale,
-		r.Max.X*s.scale, r.Max.Y*s.scale)
-}
-
-// At implements image.Image.
-func (s *scaler) At(x, y int) color.Color {
-	if x < 0 {
-		x = x - s.scale + 1
-	}
-	if y < 0 {
-		y = y - s.scale + 1
-	}
-	return s.image.At(x/s.scale, y/s.scale)
-}
-
-// leftRotate is a 90 degree rotating image.Image wrapper.
-type leftRotate struct {
-	image image.Image
-}
-
-// ColorModel implements image.Image.
-func (lr *leftRotate) ColorModel() color.Model {
-	return lr.image.ColorModel()
-}
-
-// Bounds implements image.Image.
-func (lr *leftRotate) Bounds() image.Rectangle {
-	r := lr.image.Bounds()
-	// Min is inclusive, Max is exclusive.
-	return image.Rect(r.Min.Y, -(r.Max.X - 1), r.Max.Y, -(r.Min.X - 1))
-}
-
-// At implements image.Image.
-func (lr *leftRotate) At(x, y int) color.Color {
-	return lr.image.At(-y, x)
-}
-
-// -----------------------------------------------------------------------------
 
 var font *bdf.Font
 
@@ -81,7 +28,7 @@ func genLabelForHeight(text string, height, scale int) image.Image {
 	draw.Draw(textImg, textRect, image.White, image.ZP, draw.Src)
 	font.DrawString(textImg, image.ZP, text)
 
-	scaledTextImg := scaler{image: textImg, scale: scale}
+	scaledTextImg := imgutil.Scale{Image: textImg, Scale: scale}
 	scaledTextRect := scaledTextImg.Bounds()
 
 	remains := height - scaledTextRect.Dy() - 20
@@ -238,7 +185,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 
 	var label image.Image
 	if mediaInfo != nil {
-		label = &leftRotate{image: genLabelForHeight(
+		label = &imgutil.LeftRotate{Image: genLabelForHeight(
 			params.Text, mediaInfo.PrintAreaPins, params.Scale)}
 		if r.FormValue("print") != "" {
 			if err := printer.Print(label); err != nil {
