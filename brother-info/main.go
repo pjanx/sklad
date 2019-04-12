@@ -62,15 +62,19 @@ func printStatusInformation(d []byte) {
 	switch b := d[11]; b {
 	case 0x00:
 		log.Println("media: no media")
-	case 0x4a:
+	case 0x4a, 0x0a: // 0x4a = J, in reality we get 0x0a as in QL-1100 docs
 		log.Println("media: continuous length tape")
-	case 0x4b:
+	case 0x4b, 0x0b: // 0x4b = K, in reality we get 0x0b as in QL-1100 docs
 		log.Println("media: die-cut labels")
 	default:
 		log.Println("media:", b)
 	}
 
-	// d[14] seems to be 0x14 in a real-world QL-800.
+	// In a real-world QL-800, d[14] seems to be:
+	//  0x01 with die-cut 29mm long labels,
+	//  0x14 with 29mm tape,
+	//  0x23 with red-black 62mm tape,
+	// and directly corresponds to physical pins on the tape.
 	if d[12] != 0x00 || d[13] != 0x00 || d[14] != 0x3f {
 		log.Println("unexpected status fixed bytes")
 	}
@@ -83,7 +87,7 @@ func printStatusInformation(d []byte) {
 	}
 
 	// Media length.
-	log.Println("media width:", d[17], "mm")
+	log.Println("media length:", d[17], "mm")
 
 	// Status type.
 	switch b := d[18]; b {
@@ -128,7 +132,9 @@ func printStatusInformation(d []byte) {
 		log.Println("notification number:", b)
 	}
 
-	// d[25] seems to be 0x01 in a real-world QL-800.
+	// In a real-world QL-800, d[25] seems to be:
+	//  0x01 with 29mm tape or die-cut 29mm long labels,
+	//  0x81 with red-black 62mm tape.
 	if d[23] != 0x00 || d[24] != 0x00 || d[25] != 0x00 || d[26] != 0x00 ||
 		d[27] != 0x00 || d[28] != 0x00 || d[29] != 0x00 || d[30] != 0x00 ||
 		d[31] != 0x00 {

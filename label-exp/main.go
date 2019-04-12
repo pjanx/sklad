@@ -109,9 +109,9 @@ func printStatusInformation(d []byte) {
 	switch b := d[11]; b {
 	case 0x00:
 		log.Println("media: no media")
-	case 0x4a:
+	case 0x4a, 0x0a: // 0x4a = J, in reality we get 0x0a as in QL-1100 docs
 		log.Println("media: continuous length tape")
-	case 0x4b:
+	case 0x4b, 0x0b: // 0x4b = K, in reality we get 0x0b as in QL-1100 docs
 		log.Println("media: die-cut labels")
 	default:
 		log.Println("media:", b)
@@ -121,7 +121,7 @@ func printStatusInformation(d []byte) {
 	log.Println("mode:", d[15])
 
 	// Media length.
-	log.Println("media width:", d[17], "mm")
+	log.Println("media length:", d[17], "mm")
 
 	// Status type.
 	switch b := d[18]; b {

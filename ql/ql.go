@@ -2,6 +2,8 @@
 package ql
 
 // Resources:
+//  http://etc.nkadesign.com/Printers/QL550LabelPrinterProtocol
+//  https://github.com/torvalds/linux/blob/master/drivers/usb/class/usblp.c
 //  http://www.undocprint.org/formats/page_description_languages/brother_p-touch
 
 import (
