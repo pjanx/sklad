@@ -192,9 +192,53 @@ func (p *Printer) Close() error {
 
 // -----------------------------------------------------------------------------
 
-type Status struct {
-	errors []string
+type mediaSize struct {
+	WidthMM  int
+	HeightMM int
 }
+
+type mediaInfo struct {
+	// Note that these are approximates, many pins within the margins will work
+	SideMarginPins int
+	PrintAreaPins  int
+}
+
+var media = map[mediaSize]mediaInfo{
+	// Continuous length tape
+	{12, 0}: {29, 106},
+	{29, 0}: {6, 306},
+	{38, 0}: {12, 413},
+	{50, 0}: {12, 554},
+	{54, 0}: {0, 590},
+	{62, 0}: {12, 696},
+
+	// Die-cut labels
+	{17, 54}:  {0, 165},
+	{17, 87}:  {0, 165},
+	{23, 23}:  {42, 236},
+	{29, 42}:  {6, 306},
+	{29, 90}:  {6, 306},
+	{38, 90}:  {12, 413},
+	{39, 48}:  {6, 425},
+	{52, 29}:  {0, 578},
+	{54, 29}:  {59, 602},
+	{60, 86}:  {24, 672},
+	{62, 29}:  {12, 696},
+	{62, 100}: {12, 696},
+
+	// Die-cut diameter labels
+	{12, 12}: {113, 94},
+	{24, 24}: {42, 236},
+	{58, 58}: {51, 618},
+}
+
+type Status struct {
+	MediaWidthMM  int
+	MediaLengthMM int
+	Errors        []string
+}
+
+// -----------------------------------------------------------------------------
 
 func decodeBitfieldErrors(b byte, errors [8]string) []string {
 	var result []string
@@ -209,10 +253,10 @@ func decodeBitfieldErrors(b byte, errors [8]string) []string {
 // TODO: What exactly do we need? Probably extend as needed.
 func decodeStatusInformation(d []byte) Status {
 	var status Status
-	status.errors = append(status.errors, decodeBitfieldErrors(d[8], [8]string{
+	status.Errors = append(status.Errors, decodeBitfieldErrors(d[8], [8]string{
 		"no media", "end of media", "cutter jam", "?", "printer in use",
 		"printer turned off", "high-voltage adapter", "fan motor error"})...)
-	status.errors = append(status.errors, decodeBitfieldErrors(d[9], [8]string{
+	status.Errors = append(status.Errors, decodeBitfieldErrors(d[9], [8]string{
 		"replace media", "expansion buffer full", "communication error",
 		"communication buffer full", "cover open", "cancel key",
 		"media cannot be fed", "system error"})...)
