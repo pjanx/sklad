@@ -168,11 +168,14 @@ func printStatusInformation(d []byte) {
 }
 
 // genLabelData converts an image to the printer's raster format.
-func genLabelData(src image.Image, offset int) (data []byte) {
-	// TODO: Margins? For 29mm, it's 6 pins from the start, 306 printing pins.
+func genLabelData(src image.Image, offset, length int) (data []byte) {
 	bounds := src.Bounds()
 	pixels := make([]bool, 720)
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		length--
+		if length <= 0 {
+			break
+		}
 		off := offset
 		for x := bounds.Max.X - 1; x >= bounds.Min.X; x-- {
 			// TODO: Anything to do with the ColorModel?
@@ -193,10 +196,15 @@ func genLabelData(src image.Image, offset int) (data []byte) {
 			data = append(data, b)
 		}
 	}
+	for ; length > 0; length-- {
+		data = append(data, 'g', 0x00, 90)
+		data = append(data, make([]byte, 90)...)
+	}
 	return
 }
 
-func printLabel(src image.Image) error {
+func printLabel(printer *ql.Printer, src image.Image,
+	status *ql.Status, mediaInfo *ql.MediaInfo) error {
 	data := []byte(nil)
 
 	// Raster mode.
@@ -208,7 +216,17 @@ func printLabel(src image.Image) error {
 
 	// Print information command.
 	dy := src.Bounds().Dy()
-	data = append(data, 0x1b, 0x69, 0x7a, 0x02|0x04|0x40|0x80, 0x0a, 29, 0,
+	if mediaInfo.PrintAreaLength != 0 {
+		dy = mediaInfo.PrintAreaLength
+	}
+
+	mediaType := byte(0x0a)
+	if status.MediaLengthMM != 0 {
+		mediaType = byte(0x0b)
+	}
+
+	data = append(data, 0x1b, 0x69, 0x7a, 0x02|0x04|0x40|0x80, mediaType,
+		byte(status.MediaWidthMM), byte(status.MediaLengthMM),
 		byte(dy), byte(dy>>8), byte(dy>>16), byte(dy>>24), 0, 0x00)
 
 	// Auto cut, each 1 label.
@@ -219,40 +237,25 @@ func printLabel(src image.Image) error {
 	// Not sure what it means, doesn't seem to have any effect to turn it off.
 	data = append(data, 0x1b, 0x69, 0x4b, 0x08)
 
-	// 3mm margins along the direction of feed. 0x23 = 35 dots, the minimum.
-	data = append(data, 0x1b, 0x69, 0x64, 0x23, 0x00)
+	if status.MediaLengthMM != 0 {
+		// 3mm margins along the direction of feed. 0x23 = 35 dots, the minimum.
+		data = append(data, 0x1b, 0x69, 0x64, 0x23, 0x00)
+	} else {
+		// May not set anything other than zero.
+		data = append(data, 0x1b, 0x69, 0x64, 0x00, 0x00)
+	}
 
 	// Compression mode: no compression.
 	// Should be the only supported mode for QL-800.
 	data = append(data, 0x4d, 0x00)
 
 	// The graphics data itself.
-	data = append(data, genLabelData(src, 6)...)
+	data = append(data, genLabelData(src, mediaInfo.SideMarginPins, dy)...)
 
 	// Print command with feeding.
 	data = append(data, 0x1a)
 
 	// ---
-
-	printer, err := ql.Open()
-	if err != nil {
-		return err
-	}
-	if printer == nil {
-		return errors.New("no suitable printer found")
-	}
-	defer printer.Close()
-
-	if err := printer.Initialize(); err != nil {
-		return err
-	}
-
-	status, err := printer.GetStatus()
-	if err != nil {
-		return err
-	}
-
-	printStatusInformation(status)
 
 	// Print the prepared data.
 	if _, err := printer.File.Write(data); err != nil {
@@ -263,19 +266,19 @@ func printLabel(src image.Image) error {
 	// state, and try to figure out something from the statuses.
 	// We may also receive an error status instead of the transition to
 	// the printing state. Or even after it.
-	start := time.Now()
+	start, b := time.Now(), make([]byte, 32)
 	for {
 		if time.Now().Sub(start) > 3*time.Second {
 			break
 		}
-		if n, err := printer.File.Read(status); err == io.EOF {
+		if n, err := printer.File.Read(b); err == io.EOF {
 			time.Sleep(100 * time.Millisecond)
 		} else if err != nil {
 			return err
 		} else if n < 32 {
 			return errors.New("invalid read")
 		} else {
-			printStatusInformation(status)
+			printStatusInformation(b)
 		}
 	}
 	return nil
@@ -285,47 +288,14 @@ func printLabel(src image.Image) error {
 
 var font *bdf.Font
 
-func genLabel(text string, width int) image.Image {
-	// Create a scaled bitmap of the QR code.
-	qrImg, _ := qr.Encode(text, qr.H, qr.Auto)
-	qrImg, _ = barcode.Scale(qrImg, width, width)
-	qrRect := qrImg.Bounds()
-
+func genLabelForHeight(text string, height, scale int) image.Image {
 	// Create a scaled bitmap of the text label.
 	textRect, _ := font.BoundString(text)
 	textImg := image.NewRGBA(textRect)
 	draw.Draw(textImg, textRect, image.White, image.ZP, draw.Src)
 	font.DrawString(textImg, image.ZP, text)
 
-	// TODO: We can scale as needed to make the text fit.
-	scaledTextImg := scaler{image: textImg, scale: 3}
-	scaledTextRect := scaledTextImg.Bounds()
-
-	// Combine.
-	combinedRect := qrRect
-	combinedRect.Max.Y += scaledTextRect.Dy() + 20
-
-	combinedImg := image.NewRGBA(combinedRect)
-	draw.Draw(combinedImg, combinedRect, image.White, image.ZP, draw.Src)
-	draw.Draw(combinedImg, combinedRect, qrImg, image.ZP, draw.Src)
-
-	target := image.Rect(
-		(width-scaledTextRect.Dx())/2, qrRect.Dy()+10,
-		combinedRect.Max.X, combinedRect.Max.Y)
-	draw.Draw(combinedImg, target, &scaledTextImg, scaledTextRect.Min, draw.Src)
-	return combinedImg
-}
-
-func genLabelForHeight(text string, height int) image.Image {
-	// Create a scaled bitmap of the text label.
-	textRect, _ := font.BoundString(text)
-	textImg := image.NewRGBA(textRect)
-	draw.Draw(textImg, textRect, image.White, image.ZP, draw.Src)
-	font.DrawString(textImg, image.ZP, text)
-
-	// TODO: Make it possible to choose scale, or use some heuristic.
-	scaledTextImg := scaler{image: textImg, scale: 3}
-	//scaledTextImg := scaler{image: textImg, scale: 3}
+	scaledTextImg := scaler{image: textImg, scale: scale}
 	scaledTextRect := scaledTextImg.Bounds()
 
 	remains := height - scaledTextRect.Dy() - 20
@@ -358,16 +328,48 @@ func genLabelForHeight(text string, height int) image.Image {
 var tmpl = template.Must(template.New("form").Parse(`
 	<!DOCTYPE html>
 	<html><body>
+	<h1>PT-CBP label printing tool</h1>
 	<table><tr>
 	<td valign=top>
-		<img border=1 src='?img&amp;width={{.Width}}&amp;text={{.Text}}'>
+		<img border=1 src='?img&amp;scale={{.Scale}}&amp;text={{.Text}}'>
 	</td>
 	<td valign=top>
+		<fieldset>
+			{{ if .Printer }}
+
+			<p>Printer: {{ .Printer.Manufacturer }} {{ .Printer.Model }}
+			<p>Tape:
+			{{ if .Status }}
+			{{ .Status.MediaWidthMM }} mm &times;
+			{{ .Status.MediaLengthMM }} mm
+
+			{{ if .MediaInfo }}
+			(offset: {{ .MediaInfo.SideMarginPins }} pt,
+			print area: {{ .MediaInfo.PrintAreaPins }} pt)
+			{{ else }}
+			(unknown media)
+			{{ end }}
+
+			{{ if .Status.Errors }}
+			{{ range .Status.Errors }}
+			<p>Error: {{ . }}
+			{{ end }}
+			{{ end }}
+
+			{{ end }}
+			{{ if .InitErr }}
+			{{ .InitErr }}
+			{{ end }}
+
+			{{ else }}
+			<p>Error: {{ .PrinterErr }}
+			{{ end }}
+		</fieldset>
 		<form><fieldset>
-			<p><label for=width>Tape width in pt:</label>
-				<input id=width name=width value='{{.Width}}'>
 			<p><label for=text>Text:</label>
 				<input id=text name=text value='{{.Text}}'>
+				<label for=scale>Scale:</label>
+				<input id=scale name=scale value='{{.Scale}}' size=1>
 			<p><input type=submit value='Update'>
 				<input type=submit name=print value='Update and Print'>
 		</fieldset></form>
@@ -376,37 +378,93 @@ var tmpl = template.Must(template.New("form").Parse(`
 	</body></html>
 `))
 
+func getPrinter() (*ql.Printer, error) {
+	printer, err := ql.Open()
+	if err != nil {
+		return nil, err
+	}
+	if printer == nil {
+		return nil, errors.New("no suitable printer found")
+	}
+	return printer, nil
+}
+
+func getStatus(printer *ql.Printer) (*ql.Status, error) {
+	if err := printer.Initialize(); err != nil {
+		return nil, err
+	}
+	if data, err := printer.GetStatus(); err != nil {
+		return nil, err
+	} else {
+		printStatusInformation(data)
+		return ql.DecodeStatus(data), nil
+	}
+}
+
 func handle(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
+	var (
+		status  *ql.Status
+		initErr error
+	)
+	printer, printerErr := getPrinter()
+	if printerErr == nil {
+		defer printer.Close()
+		status, initErr = getStatus(printer)
+	}
+
+	var mediaInfo *ql.MediaInfo
+	if status != nil {
+		mediaInfo = ql.GetMediaInfo(status.MediaWidthMM, status.MediaLengthMM)
+	}
+
 	var params = struct {
-		Width int
-		Text  string
+		Printer    *ql.Printer
+		PrinterErr error
+		Status     *ql.Status
+		InitErr    error
+		MediaInfo  *ql.MediaInfo
+		Text       string
+		Scale      int
 	}{
-		Text: r.FormValue("text"),
+		Printer:    printer,
+		PrinterErr: printerErr,
+		Status:     status,
+		InitErr:    initErr,
+		MediaInfo:  mediaInfo,
+		Text:       r.FormValue("text"),
 	}
 
 	var err error
-	params.Width, err = strconv.Atoi(r.FormValue("width"))
+	params.Scale, err = strconv.Atoi(r.FormValue("scale"))
 	if err != nil {
-		params.Width = 306 // Default to 29mm tape.
+		params.Scale = 3
 	}
 
-	// TODO: Possibly just remove the for-width mode.
-	label := genLabel(params.Text, params.Width)
-	label = &leftRotate{image: genLabelForHeight(params.Text, params.Width)}
-	if r.FormValue("print") != "" {
-		if err := printLabel(label); err != nil {
-			log.Println("print error:", err)
+	var label image.Image
+	if mediaInfo != nil {
+		label = &leftRotate{image: genLabelForHeight(
+			params.Text, mediaInfo.PrintAreaPins, params.Scale)}
+		if r.FormValue("print") != "" {
+			if err := printLabel(
+				printer, label, status, mediaInfo); err != nil {
+				log.Println("print error:", err)
+			}
 		}
 	}
 
 	if _, ok := r.Form["img"]; !ok {
 		w.Header().Set("Content-Type", "text/html")
 		tmpl.Execute(w, &params)
+		return
+	}
+
+	if mediaInfo == nil {
+		http.Error(w, "unknown media", 500)
 		return
 	}
 

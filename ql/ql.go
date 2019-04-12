@@ -5,6 +5,7 @@ package ql
 //  http://etc.nkadesign.com/Printers/QL550LabelPrinterProtocol
 //  https://github.com/torvalds/linux/blob/master/drivers/usb/class/usblp.c
 //  http://www.undocprint.org/formats/page_description_languages/brother_p-touch
+//  http://www.undocprint.org/formats/communication_protocols/ieee_1284
 
 import (
 	"errors"
@@ -61,8 +62,6 @@ type deviceID map[string][]string
 
 // parseIEEE1284DeviceID leniently parses an IEEE 1284 Device ID string
 // and returns a map containing a slice of values for each key.
-//
-// See e.g. http://www.undocprint.org/formats/communication_protocols/ieee_1284
 func parseIEEE1284DeviceID(id []byte) deviceID {
 	m := make(deviceID)
 	for _, kv := range deviceIDRegexp.FindAllStringSubmatch(string(id), -1) {
@@ -85,10 +84,19 @@ func (id deviceID) Find(key, abbreviation string) []string {
 	return nil
 }
 
+func (id deviceID) FindFirst(key, abbreviation string) string {
+	for _, s := range id.Find(key, abbreviation) {
+		return s
+	}
+	return ""
+}
+
 // -----------------------------------------------------------------------------
 
 type Printer struct {
-	File *os.File
+	File         *os.File
+	Manufacturer string
+	Model        string
 }
 
 func compatible(id deviceID) bool {
@@ -119,12 +127,17 @@ func Open() (*Printer, error) {
 			f.Close()
 			continue
 		}
+		parsedID := parseIEEE1284DeviceID(deviceID)
 		// Filter out printers that wouldn't understand the protocol.
-		if !compatible(parseIEEE1284DeviceID(deviceID)) {
+		if !compatible(parsedID) {
 			f.Close()
 			continue
 		}
-		return &Printer{File: f}, nil
+		return &Printer{
+			File:         f,
+			Manufacturer: parsedID.FindFirst("MANUFACTURER", "MFG"),
+			Model:        parsedID.FindFirst("MODEL", "MDL"),
+		}, nil
 	}
 	return nil, nil
 }
@@ -194,51 +207,60 @@ func (p *Printer) Close() error {
 
 type mediaSize struct {
 	WidthMM  int
-	HeightMM int
+	LengthMM int
 }
 
-type mediaInfo struct {
-	// Note that these are approximates, many pins within the margins will work
+type MediaInfo struct {
+	// Note that these are approximates, many pins within the margins will work.
 	SideMarginPins int
 	PrintAreaPins  int
+	// If non-zero, length of the die-cut label print area in 300dpi pins.
+	PrintAreaLength int
 }
 
-var media = map[mediaSize]mediaInfo{
+var media = map[mediaSize]MediaInfo{
 	// Continuous length tape
-	{12, 0}: {29, 106},
-	{29, 0}: {6, 306},
-	{38, 0}: {12, 413},
-	{50, 0}: {12, 554},
-	{54, 0}: {0, 590},
-	{62, 0}: {12, 696},
+	{12, 0}: {29, 106, 0},
+	{29, 0}: {6, 306, 0},
+	{38, 0}: {12, 413, 0},
+	{50, 0}: {12, 554, 0},
+	{54, 0}: {0, 590, 0},
+	{62, 0}: {12, 696, 0},
 
 	// Die-cut labels
-	{17, 54}:  {0, 165},
-	{17, 87}:  {0, 165},
-	{23, 23}:  {42, 236},
-	{29, 42}:  {6, 306},
-	{29, 90}:  {6, 306},
-	{38, 90}:  {12, 413},
-	{39, 48}:  {6, 425},
-	{52, 29}:  {0, 578},
-	{54, 29}:  {59, 602},
-	{60, 86}:  {24, 672},
-	{62, 29}:  {12, 696},
-	{62, 100}: {12, 696},
+	{17, 54}:  {0, 165, 566},
+	{17, 87}:  {0, 165, 956},
+	{23, 23}:  {42, 236, 202},
+	{29, 42}:  {6, 306, 425},
+	{29, 90}:  {6, 306, 991},
+	{38, 90}:  {12, 413, 991},
+	{39, 48}:  {6, 425, 495},
+	{52, 29}:  {0, 578, 271},
+	{54, 29}:  {59, 602, 271},
+	{60, 86}:  {24, 672, 954},
+	{62, 29}:  {12, 696, 271},
+	{62, 100}: {12, 696, 1109},
 
 	// Die-cut diameter labels
-	{12, 12}: {113, 94},
-	{24, 24}: {42, 236},
-	{58, 58}: {51, 618},
+	{12, 12}: {113, 94, 94},
+	{24, 24}: {42, 236, 236},
+	{58, 58}: {51, 618, 618},
 }
+
+func GetMediaInfo(widthMM, lengthMM int) *MediaInfo {
+	if mi, ok := media[mediaSize{widthMM, lengthMM}]; ok {
+		return &mi
+	}
+	return nil
+}
+
+// -----------------------------------------------------------------------------
 
 type Status struct {
 	MediaWidthMM  int
 	MediaLengthMM int
 	Errors        []string
 }
-
-// -----------------------------------------------------------------------------
 
 func decodeBitfieldErrors(b byte, errors [8]string) []string {
 	var result []string
@@ -251,8 +273,11 @@ func decodeBitfieldErrors(b byte, errors [8]string) []string {
 }
 
 // TODO: What exactly do we need? Probably extend as needed.
-func decodeStatusInformation(d []byte) Status {
+func DecodeStatus(d []byte) *Status {
 	var status Status
+	status.MediaWidthMM = int(d[10])
+	status.MediaLengthMM = int(d[17])
+
 	status.Errors = append(status.Errors, decodeBitfieldErrors(d[8], [8]string{
 		"no media", "end of media", "cutter jam", "?", "printer in use",
 		"printer turned off", "high-voltage adapter", "fan motor error"})...)
@@ -260,5 +285,5 @@ func decodeStatusInformation(d []byte) Status {
 		"replace media", "expansion buffer full", "communication error",
 		"communication buffer full", "cover open", "cancel key",
 		"media cannot be fed", "system error"})...)
-	return status
+	return &status
 }
