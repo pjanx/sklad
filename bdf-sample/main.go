@@ -4,9 +4,10 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
-	"janouch.name/sklad/bdf"
 	"log"
 	"os"
+
+	"janouch.name/sklad/bdf"
 )
 
 func main() {

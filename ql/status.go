@@ -151,28 +151,28 @@ func (s *Status) Dump(f io.Writer) {
 	fmt.Fprintln(f, "media length:", s[17], "mm")
 
 	// Status type.
-	switch t := s[18]; t {
-	case 0x00:
+	switch t := s[18]; StatusType(t) {
+	case StatusTypeReplyToRequest:
 		fmt.Fprintln(f, "status type: reply to status request")
-	case 0x01:
+	case StatusTypePrintingCompleted:
 		fmt.Fprintln(f, "status type: printing completed")
-	case 0x02:
+	case StatusTypeErrorOccurred:
 		fmt.Fprintln(f, "status type: error occurred")
-	case 0x04:
+	case StatusTypeTurnedOff:
 		fmt.Fprintln(f, "status type: turned off")
-	case 0x05:
+	case StatusTypeNotification:
 		fmt.Fprintln(f, "status type: notification")
-	case 0x06:
+	case StatusTypePhaseChange:
 		fmt.Fprintln(f, "status type: phase change")
 	default:
 		fmt.Fprintln(f, "status type:", t)
 	}
 
 	// Phase type.
-	switch t := s[19]; t {
-	case 0x00:
+	switch t := s[19]; StatusPhase(t) {
+	case StatusPhaseReceiving:
 		fmt.Fprintln(f, "phase state: receiving state")
-	case 0x01:
+	case StatusPhasePrinting:
 		fmt.Fprintln(f, "phase state: printing state")
 	default:
 		fmt.Fprintln(f, "phase state:", t)
