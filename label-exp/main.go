@@ -182,7 +182,6 @@ func getStatus(printer *ql.Printer) error {
 	if err := printer.UpdateStatus(); err != nil {
 		return err
 	}
-	log.Printf("status\n%s", printer.LastStatus)
 	return nil
 }
 
@@ -192,17 +191,23 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var initErr error
+	var (
+		initErr   error
+		mediaInfo *ql.MediaInfo
+	)
 	printer, printerErr := getPrinter()
 	if printerErr == nil {
 		defer printer.Close()
-		initErr = getStatus(printer)
-	}
+		printer.StatusNotify = func(status *ql.Status) {
+			log.Printf("\x1b[1mreceived status\x1b[m\n%s", status)
+		}
 
-	var mediaInfo *ql.MediaInfo
-	if printer.LastStatus != nil {
-		mediaInfo = ql.GetMediaInfo(printer.LastStatus.MediaWidthMM(),
-			printer.LastStatus.MediaLengthMM())
+		if initErr = getStatus(printer); initErr == nil {
+			mediaInfo = ql.GetMediaInfo(
+				printer.LastStatus.MediaWidthMM(),
+				printer.LastStatus.MediaLengthMM(),
+			)
+		}
 	}
 
 	var params = struct {
@@ -269,7 +274,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	log.Println("Starting server")
+	log.Println("starting server")
 	http.HandleFunc("/", handle)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
