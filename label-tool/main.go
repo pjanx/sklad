@@ -151,6 +151,9 @@ var tmpl = template.Must(template.New("form").Parse(`
 			<p>Error: {{ .PrinterErr }}
 			{{ end }}
 		</fieldset>
+		<fieldset>
+			<p>Font: {{ .Font.Name }}
+		</fieldset>
 		<form><fieldset>
 			<p><label for=text>Text:</label>
 				<input id=text name=text value='{{.Text}}'>
@@ -215,6 +218,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		PrinterErr error
 		InitErr    error
 		MediaInfo  *ql.MediaInfo
+		Font       *bdf.Font
 		Text       string
 		Scale      int
 	}{
@@ -222,6 +226,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		PrinterErr: printerErr,
 		InitErr:    initErr,
 		MediaInfo:  mediaInfo,
+		Font:       font,
 		Text:       r.FormValue("text"),
 	}
 
