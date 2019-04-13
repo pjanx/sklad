@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 )
 
 type Series struct {
@@ -51,9 +52,14 @@ var (
 // TODO: A function for fulltext search in containers (1. Id, 2. Description).
 
 func dbCommit() error {
-	// Back up the current database contents.
+	// Write a timestamp.
 	e := json.NewEncoder(dbLog)
 	e.SetIndent("", "  ")
+	if err := e.Encode(time.Now().Format(time.RFC3339)); err != nil {
+		return err
+	}
+
+	// Back up the current database contents.
 	if err := e.Encode(&dbLast); err != nil {
 		return err
 	}
@@ -128,6 +134,7 @@ func loadDatabase() error {
 	}
 
 	// Validate that no container is a parent of itself on any level.
+	// This could probably be optimized but it would stop being obvious.
 	for _, pv := range db.Containers {
 		parents := map[ContainerId]bool{pv.Id(): true}
 		for pv.Parent != "" {
