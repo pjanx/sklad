@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -37,7 +36,7 @@ var (
 	dbPath string
 	db     Database
 	dbLast Database
-	dbLog  io.Writer
+	dbLog  *os.File
 
 	indexSeries    = map[string]*Series{}
 	indexContainer = map[ContainerId]*Container{}
@@ -56,6 +55,9 @@ func dbCommit() error {
 	e := json.NewEncoder(dbLog)
 	e.SetIndent("", "  ")
 	if err := e.Encode(&dbLast); err != nil {
+		return err
+	}
+	if err := dbLog.Sync(); err != nil {
 		return err
 	}
 
