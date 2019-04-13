@@ -217,10 +217,10 @@ func main() {
 		log.Fatalf("usage: %s ADDRESS BDF-FILE\n", os.Args[0])
 	}
 
-	address, bdf_path := os.Args[1], os.Args[2]
+	address, bdfPath := os.Args[1], os.Args[2]
 
 	var err error
-	fi, err := os.Open(bdf_path)
+	fi, err := os.Open(bdfPath)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -235,5 +235,5 @@ func main() {
 
 	log.Println("starting server")
 	http.HandleFunc("/", handle)
-	log.Fatal(http.ListenAndServe(address, nil))
+	log.Fatalln(http.ListenAndServe(address, nil))
 }
