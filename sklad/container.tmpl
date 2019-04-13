@@ -1,6 +1,27 @@
 {{ define "Title" }}Přehled{{ end }}
 {{ define "Content" }}
 
-<p>TODO
+{{ if .Id }}
+<h2>{{ .Id }}</h2>
+{{ else }}
+<h2>Obaly nejvyšší úrovně</h2>
+{{ end }}
+
+{{ if .Description }}
+<p>{{ .Description }}
+{{ end }}
+
+{{ if .Children }}
+{{ range .Children }}
+<fieldset>
+<h3><a href="/container?id={{ .Id }}">{{ .Id }}</a></h3>
+{{ if .Description }}
+<p>{{ .Description }}
+{{ end }}
+</fieldset>
+{{ end }}
+{{ else }}
+<p>Obal je prázdný.
+{{ end }}
 
 {{ end }}

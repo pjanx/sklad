@@ -7,18 +7,33 @@
 	html, body { min-height: 100vh; }
 	body { padding: 1em; box-sizing: border-box;
 		margin: 0 auto; max-width: 50em;
-		border-left: 1px solid gray; border-right: 1px solid gray;
+		border-left: 1px solid #ccc; border-right: 1px solid #ccc;
 		font-family: sans-serif; }
+	header { display: flex; justify-content: space-between; align-items: center;
+		flex-wrap: wrap; margin: -1em -1em 0 -1em; padding: 0 1em;
+		background: linear-gradient(0deg, #fff, #eee); }
+	header * { display: inline-block; }
+	a { color: inherit; }
 	</style>
 </head>
 <body>
-<h1>sklad</h1>
+
+<header>
+	<h1>sklad</h1>
 
 {{ if .LoggedIn }}
-<form method=post action=/logout>
-<input type=submit value="Odhlásit">
-</form>
+	<a href=/>Obaly</a>
+	<a href=/series>Řady</a>
+
+	<form method=get action=/search>
+	<input type=text name=q><input type=submit value="Hledat">
+	</form>
+
+	<form method=post action=/logout>
+	<input type=submit value="Odhlásit">
+	</form>
 {{ end }}
+</header>
 
 {{ template "Content" . }}
 </body>

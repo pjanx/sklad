@@ -11,22 +11,31 @@ import (
 	"time"
 )
 
-var (
-	templates = map[string]*template.Template{}
-)
+var templates = map[string]*template.Template{}
 
+// TODO: Consider wrapping the data object in something that always contains
+// a LoggedIn member, so that we don't need to duplicate it.
 func executeTemplate(name string, w io.Writer, data interface{}) {
 	if err := templates[name].Execute(w, data); err != nil {
 		panic(err)
 	}
 }
 
-func handleLogin(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+func wrap(inner func(http.ResponseWriter, *http.Request)) func(
+	http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if r.Method == http.MethodGet {
+			w.Header().Set("Cache-Control", "no-store")
+		}
+		inner(w, r)
 	}
+}
 
+func handleLogin(w http.ResponseWriter, r *http.Request) {
 	redirect := r.FormValue("redirect")
 	if redirect == "" {
 		redirect = "/"
@@ -45,7 +54,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		w.Header().Set("Cache-Control", "no-store")
+		// We're just going to render the template.
 	case http.MethodPost:
 		if r.FormValue("password") == db.Password {
 			session.LoggedIn = true
@@ -78,10 +87,27 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	children := []*Container{}
+	id := ContainerId(r.FormValue("id"))
+	description := ""
+
+	if id == "" {
+		children = db.Containers
+	} else if container, ok := indexContainer[id]; ok {
+		children = indexChildren[id]
+		description = container.Description
+	}
+
 	params := struct {
-		LoggedIn bool
+		LoggedIn    bool
+		Id          ContainerId
+		Description string
+		Children    []*Container
 	}{
-		LoggedIn: true,
+		LoggedIn:    true,
+		Id:          id,
+		Description: description,
+		Children:    children,
 	}
 
 	executeTemplate("container.tmpl", w, &params)
@@ -127,11 +153,11 @@ func main() {
 	//  - https://stackoverflow.com/a/33880971/76313
 	//  - POST /label?id=UA1
 
-	http.HandleFunc("/", sessionWrap(handleContainer))
-	http.HandleFunc("/container", sessionWrap(handleContainer))
+	http.HandleFunc("/", sessionWrap(wrap(handleContainer)))
+	http.HandleFunc("/container", sessionWrap(wrap(handleContainer)))
 
-	http.HandleFunc("/login", handleLogin)
-	http.HandleFunc("/logout", sessionWrap(handleLogout))
+	http.HandleFunc("/login", wrap(handleLogin))
+	http.HandleFunc("/logout", sessionWrap(wrap(handleLogout)))
 
 	log.Fatalln(http.ListenAndServe(address, nil))
 }
