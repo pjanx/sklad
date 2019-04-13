@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{ template "Title" }} - sklad</title>
+	<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+	<style>
+	html, body { min-height: 100vh; }
+	body { padding: 1em; box-sizing: border-box;
+		margin: 0 auto; max-width: 50em;
+		border-left: 1px solid gray; border-right: 1px solid gray;
+		font-family: sans-serif; }
+	</style>
+</head>
+<body>
+<h1>sklad</h1>
+
+{{ if .LoggedIn }}
+<form method=post action=/logout>
+<input type=submit value="Odhlásit">
+</form>
+{{ end }}
+
+{{ template "Content" . }}
+</body>
+</html>

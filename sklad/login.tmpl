@@ -1,0 +1,14 @@
+{{ define "Title" }}Přihlášení{{ end }}
+{{ define "Content" }}
+
+<form method=post>
+<label for=password>Heslo:</label>
+<input type=password name=password id=password>
+<input type=submit value="Přihlásit">
+</form>
+
+{{ if .IncorrectPassword }}
+<p>Bylo zadáno nesprávné heslo.
+{{ end }}
+
+{{ end }}
