@@ -157,12 +157,15 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := r.FormValue("q")
-	_ = query
-
-	// TODO: Query the database for exact matches and fulltext.
-	//  - Will want to show the full path from the root "" container.
-
-	params := struct{}{}
+	params := struct {
+		Query      string
+		Series     []*Series
+		Containers []*Container
+	}{
+		Query:      query,
+		Series:     dbSearchSeries(query),
+		Containers: dbSearchContainers(query),
+	}
 
 	executeTemplate("search.tmpl", w, &params)
 }

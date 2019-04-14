@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -27,8 +28,17 @@ func (c *Container) Id() ContainerId {
 }
 
 func (c *Container) Children() []*Container {
-	// TODO: Sort this by Id, or maybe even return a map[string]*Container.
+	// TODO: Sort this by Id, or maybe even return a map[string]*Container,
+	// text/template would sort that automatically.
 	return indexChildren[c.Id()]
+}
+
+func (c *Container) Path() (result []ContainerId) {
+	for c != nil && c.Parent != "" {
+		c = indexContainer[c.Parent]
+		result = append(result, c.Id())
+	}
+	return
 }
 
 type Database struct {
@@ -52,9 +62,41 @@ var (
 // TODO: Some functions to add, remove and change things in the database.
 // Indexes must be kept valid, just like any invariants.
 
-// TODO: A function for fulltext search in series (1. Prefix, 2. Description).
+func dbSearchSeries(query string) (result []*Series) {
+	query = strings.ToLower(query)
+	added := map[string]bool{}
+	for _, s := range db.Series {
+		if query == strings.ToLower(s.Prefix) {
+			result = append(result, s)
+			added[s.Prefix] = true
+		}
+	}
+	for _, s := range db.Series {
+		if strings.Contains(
+			strings.ToLower(s.Description), query) && !added[s.Prefix] {
+			result = append(result, s)
+		}
+	}
+	return
+}
 
-// TODO: A function for fulltext search in containers (1. Id, 2. Description).
+func dbSearchContainers(query string) (result []*Container) {
+	query = strings.ToLower(query)
+	added := map[ContainerId]bool{}
+	for id, c := range indexContainer {
+		if query == strings.ToLower(string(id)) {
+			result = append(result, c)
+			added[id] = true
+		}
+	}
+	for id, c := range indexContainer {
+		if strings.Contains(
+			strings.ToLower(c.Description), query) && !added[id] {
+			result = append(result, c)
+		}
+	}
+	return
+}
 
 func dbCommit() error {
 	// Write a timestamp.
