@@ -1,25 +1,91 @@
-{{ define "Title" }}Přehled{{ end }}
+{{ define "Title" }}{{ or .Id "Obaly" }}{{ end }}
 {{ define "Content" }}
 
 {{ if .Id }}
-<h2>{{ .Id }}</h2>
+
+<section>
+<header>
+	<h2>{{ .Id }}</h2>
+	<form method=post action="/label?id={{ .Id }}">
+	<input type=submit value="Vytisknout štítek">
+	</form>
+	<form method=post action="/?id={{ .Id }}&amp;remove">
+	<input type=submit value="Odstranit">
+	</form>
+</header>
+
+<form method=post action="/?id={{ .Id }}">
+<textarea name=description rows=5>
+{{ .Description }}
+</textarea>
+<footer>
+	<div>
+		<label for=series>Řada:</label>
+		<select name=series id=series>
+{{ range $prefix, $desc := .AllSeries }}
+			<option value="{{ $prefix }}"
+				{{ if eq $prefix $.Series }}selected{{ end }}
+				>{{ $prefix }} &mdash; {{ $desc }}</option>
+{{ end }}
+		</select>
+	</div>
+	<div>
+		<label for=parent>Nadobal:</label>
+		<input type=text name=parent id=parent value="{{ .Parent }}">
+	</div>
+	<input type=submit value="Uložit">
+</footer>
+</form>
+</section>
+
+<h2>Podobaly</h3>
+
 {{ else }}
+<section>
+<header>
+	<h2>Nový obal</h2>
+</header>
+<form method=post action="/">
+<textarea name=description rows=5
+	placeholder="Popis obalu nebo jeho obsahu"></textarea>
+<footer>
+	<div>
+		<label for=series>Řada:</label>
+		<select name=series id=series>
+{{ range $prefix, $desc := .AllSeries }}
+			<option value="{{ $prefix }}"
+				{{ if eq $prefix $.Series }}selected{{ end }}
+				>{{ $prefix }} &mdash; {{ $desc }}</option>
+{{ end }}
+		</select>
+	</div>
+	<div>
+		<label for=parent>Nadobal:</label>
+		<input type=text name=parent id=parent value="">
+	</div>
+	<input type=submit value="Uložit">
+</footer>
+</form>
+</section>
+
 <h2>Obaly nejvyšší úrovně</h2>
 {{ end }}
 
-{{ if .Description }}
-<p>{{ .Description }}
-{{ end }}
-
-{{ if .Children }}
 {{ range .Children }}
-<fieldset>
-<h3><a href="/container?id={{ .Id }}">{{ .Id }}</a></h3>
+<section>
+<header>
+	<h3><a href="/container?id={{ .Id }}">{{ .Id }}</a></h3>
+	<form method=post action="/label?id={{ .Id }}">
+	<input type=submit value="Vytisknout štítek">
+	</form>
+	<form method=post action="/?id={{ .Id }}&amp;remove">
+	<input type=submit value="Odstranit">
+	</form>
+</header>
 {{ if .Description }}
 <p>{{ .Description }}
 {{ end }}
-</fieldset>
-{{ end }}
+</section>
 {{ else }}
 <p>Obal je prázdný.
 {{ end }}

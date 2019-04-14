@@ -13,8 +13,6 @@ import (
 
 var templates = map[string]*template.Template{}
 
-// TODO: Consider wrapping the data object in something that always contains
-// a LoggedIn member, so that we don't need to duplicate it.
 func executeTemplate(name string, w io.Writer, data interface{}) {
 	if err := templates[name].Execute(w, data); err != nil {
 		panic(err)
@@ -48,7 +46,6 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	params := struct {
-		LoggedIn          bool
 		IncorrectPassword bool
 	}{}
 
@@ -82,39 +79,119 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleContainer(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		// TODO
+	}
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
+	allSeries := map[string]string{}
+	for _, s := range indexSeries {
+		allSeries[s.Prefix] = s.Description
+	}
+
 	children := []*Container{}
 	id := ContainerId(r.FormValue("id"))
 	description := ""
+	series := ""
+	parent := ContainerId("")
 
 	if id == "" {
-		children = db.Containers
+		children = indexChildren[id]
 	} else if container, ok := indexContainer[id]; ok {
 		children = indexChildren[id]
 		description = container.Description
+		series = container.Series
+		parent = container.Parent
 	}
 
 	params := struct {
-		LoggedIn    bool
 		Id          ContainerId
 		Description string
 		Children    []*Container
+		Series      string
+		Parent      ContainerId
+		AllSeries   map[string]string
 	}{
-		LoggedIn:    true,
 		Id:          id,
 		Description: description,
 		Children:    children,
+		Series:      series,
+		Parent:      parent,
+		AllSeries:   allSeries,
 	}
 
 	executeTemplate("container.tmpl", w, &params)
 }
 
-// TODO: Consider a wrapper function that automatically calls ParseForm
-// and disables client-side caching.
+func handleSeries(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		// TODO
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	allSeries := map[string]string{}
+	for _, s := range indexSeries {
+		allSeries[s.Prefix] = s.Description
+	}
+
+	prefix := r.FormValue("prefix")
+	description := ""
+
+	if prefix == "" {
+	} else if series, ok := indexSeries[prefix]; ok {
+		description = series.Description
+	}
+
+	params := struct {
+		Prefix      string
+		Description string
+		AllSeries   map[string]string
+	}{
+		Prefix:      prefix,
+		Description: description,
+		AllSeries:   allSeries,
+	}
+
+	executeTemplate("series.tmpl", w, &params)
+}
+
+func handleSearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	query := r.FormValue("q")
+	_ = query
+
+	// TODO: Query the database for exact matches and fulltext.
+
+	params := struct{}{}
+
+	executeTemplate("search.tmpl", w, &params)
+}
+
+func handleLabel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.FormValue("id")
+	_ = id
+
+	// TODO: See if such a container exists, print a label on the printer.
+
+	params := struct{}{}
+
+	executeTemplate("label.tmpl", w, &params)
+}
 
 func main() {
 	// Randomize the RNG for session string generation.
@@ -144,20 +221,13 @@ func main() {
 	// TODO: Eventually we will need to load a font file for label printing.
 	//  - The path might be part of configuration, or implicit by filename.
 
-	// TODO: Some routing and pages.
-	//
-	//  - GET /container?id=UA1
-	//  - GET /series?id=A
-	//  - GET /search?q=bottle
-	//
-	//  - https://stackoverflow.com/a/33880971/76313
-	//  - POST /label?id=UA1
-
-	http.HandleFunc("/", sessionWrap(wrap(handleContainer)))
-	http.HandleFunc("/container", sessionWrap(wrap(handleContainer)))
-
 	http.HandleFunc("/login", wrap(handleLogin))
 	http.HandleFunc("/logout", sessionWrap(wrap(handleLogout)))
+
+	http.HandleFunc("/", sessionWrap(wrap(handleContainer)))
+	http.HandleFunc("/series", sessionWrap(wrap(handleSeries)))
+	http.HandleFunc("/search", sessionWrap(wrap(handleSearch)))
+	http.HandleFunc("/label", sessionWrap(wrap(handleLabel)))
 
 	log.Fatalln(http.ListenAndServe(address, nil))
 }

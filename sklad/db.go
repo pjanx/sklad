@@ -123,12 +123,11 @@ func loadDatabase() error {
 
 	// Construct an index that goes from parent containers to their children.
 	for _, pv := range db.Containers {
-		if pv.Parent == "" {
-			continue
-		}
-		if _, ok := indexContainer[pv.Parent]; !ok {
-			return fmt.Errorf("container %s has a nonexistent parent %s",
-				pv.Id(), pv.Parent)
+		if pv.Parent != "" {
+			if _, ok := indexContainer[pv.Parent]; !ok {
+				return fmt.Errorf("container %s has a nonexistent parent %s",
+					pv.Id(), pv.Parent)
+			}
 		}
 		indexChildren[pv.Parent] = append(indexChildren[pv.Parent], pv)
 	}

@@ -1,19 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>{{ template "Title" }} - sklad</title>
+	<title>{{ template "Title" . }} - sklad</title>
 	<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+	<meta name=viewport content="width=device-width, initial-scale=1">
 	<style>
 	html, body { min-height: 100vh; }
-	body { padding: 1em; box-sizing: border-box;
-		margin: 0 auto; max-width: 50em;
+	body { padding: 1rem; box-sizing: border-box;
+		margin: 0 auto; max-width: 50rem;
 		border-left: 1px solid #ccc; border-right: 1px solid #ccc;
 		font-family: sans-serif; }
-	header { display: flex; justify-content: space-between; align-items: center;
-		flex-wrap: wrap; margin: -1em -1em 0 -1em; padding: 0 1em;
-		background: linear-gradient(0deg, #fff, #eee); }
-	header * { display: inline-block; }
+
+	section { border: 1px outset #ccc; padding: 0 .5rem; margin: 1rem 0; }
+	section > p { margin: 0 0 .5rem 0; }
+
+	header, footer { display: flex; justify-content: space-between;
+		align-items: center; flex-wrap: wrap; padding-top: .5em; }
+	header { margin: 0 -.5rem; padding: .5rem .5rem 0 .5rem;
+		background: linear-gradient(0deg, transparent, #f8f8f8); }
+	body > header { margin: -1rem -1rem 0 -1rem; padding: 1rem 1rem 0 1rem;
+		background: linear-gradient(0deg, transparent, #eeeeee); }
+
+	header *,
+	footer * { display: inline-block; }
+	header > *,
+	footer > * { margin: 0 0 .5rem 0; }
+	header > *:not(:last-child),
+	footer > *:not(:last-child) { margin-right: .5rem; }
+
+	header > h2,
+	header > h3 { flex-grow: 1; }
+
+	/* Don't ask me why this is an improvement on mobile browsers. */
+	input[type=submit], input[type=text], input[type=password],
+	select, textarea { border: 1px inset #ccc; padding: .25rem; }
+	input[type=submit] { border-style: outset; }
+	select { border-style: solid; }
+
 	a { color: inherit; }
+	textarea { padding: .5rem; box-sizing: border-box; width: 100%;
+		font-family: inherit; resize: vertical; }
+	select { max-width: 15rem; }
 	</style>
 </head>
 <body>
@@ -21,7 +48,7 @@
 <header>
 	<h1>sklad</h1>
 
-{{ if .LoggedIn }}
+{{ block "HeaderControls" . }}
 	<a href=/>Obaly</a>
 	<a href=/series>Řady</a>
 
@@ -33,6 +60,7 @@
 	<input type=submit value="Odhlásit">
 	</form>
 {{ end }}
+
 </header>
 
 {{ template "Content" . }}

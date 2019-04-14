@@ -1,12 +1,13 @@
 {{ define "Title" }}Přihlášení{{ end }}
+{{ define "HeaderControls" }}<!-- text/template requires content -->{{ end }}
 {{ define "Content" }}
 
 <h2>Přihlášení</h2>
 
 <form method=post>
 <label for=password>Heslo:</label>
-<input type=password name=password id=password>
-<input type=submit value="Přihlásit">
+<input type=password name=password id=password
+><input type=submit value="Přihlásit">
 </form>
 
 {{ if .IncorrectPassword }}
