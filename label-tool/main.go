@@ -19,59 +19,59 @@ import (
 var font *bdf.Font
 
 var tmpl = template.Must(template.New("form").Parse(`
-	<!DOCTYPE html>
-	<html><body>
-	<h1>PT-CBP label printing tool</h1>
-	<table><tr>
-	<td valign=top>
-		<img border=1 src='?img&amp;scale={{.Scale}}&amp;text={{.Text}}'>
-	</td>
-	<td valign=top>
-		<fieldset>
-			{{ if .Printer }}
+<!DOCTYPE html>
+<html><body>
+<h1>PT-CBP label printing tool</h1>
+<table><tr>
+<td valign=top>
+	<img border=1 src='?img&amp;scale={{.Scale}}&amp;text={{.Text}}'>
+</td>
+<td valign=top>
+	<fieldset>
+		{{ if .Printer }}
 
-			<p>Printer: {{ .Printer.Manufacturer }} {{ .Printer.Model }}
-			<p>Tape:
-			{{ if .Printer.LastStatus }}
-			{{ .Printer.LastStatus.MediaWidthMM }} mm &times;
-			{{ .Printer.LastStatus.MediaLengthMM }} mm
+		<p>Printer: {{ .Printer.Manufacturer }} {{ .Printer.Model }}
+		<p>Tape:
+		{{ if .Printer.LastStatus }}
+		{{ .Printer.LastStatus.MediaWidthMM }} mm &times;
+		{{ .Printer.LastStatus.MediaLengthMM }} mm
 
-			{{ if .MediaInfo }}
-			(offset: {{ .MediaInfo.SideMarginPins }} pt,
-			print area: {{ .MediaInfo.PrintAreaPins }} pt)
-			{{ else }}
-			(unknown media)
-			{{ end }}
+		{{ if .MediaInfo }}
+		(offset: {{ .MediaInfo.SideMarginPins }} pt,
+		print area: {{ .MediaInfo.PrintAreaPins }} pt)
+		{{ else }}
+		(unknown media)
+		{{ end }}
 
-			{{ if .Printer.LastStatus.Errors }}
-			{{ range .Printer.LastStatus.Errors }}
-			<p>Error: {{ . }}
-			{{ end }}
-			{{ end }}
+		{{ if .Printer.LastStatus.Errors }}
+		{{ range .Printer.LastStatus.Errors }}
+		<p>Error: {{ . }}
+		{{ end }}
+		{{ end }}
 
-			{{ end }}
-			{{ if .InitErr }}
-			{{ .InitErr }}
-			{{ end }}
+		{{ end }}
+		{{ if .InitErr }}
+		{{ .InitErr }}
+		{{ end }}
 
-			{{ else }}
-			<p>Error: {{ .PrinterErr }}
-			{{ end }}
-		</fieldset>
-		<fieldset>
-			<p>Font: {{ .Font.Name }}
-		</fieldset>
-		<form><fieldset>
-			<p><label for=text>Text:</label>
-				<input id=text name=text value='{{.Text}}'>
-				<label for=scale>Scale:</label>
-				<input id=scale name=scale value='{{.Scale}}' size=1>
-			<p><input type=submit value='Update'>
-				<input type=submit name=print value='Update and Print'>
-		</fieldset></form>
-	</td>
-	</tr></table>
-	</body></html>
+		{{ else }}
+		<p>Error: {{ .PrinterErr }}
+		{{ end }}
+	</fieldset>
+	<fieldset>
+		<p>Font: {{ .Font.Name }}
+	</fieldset>
+	<form><fieldset>
+		<p><label for=text>Text:</label>
+			<input id=text name=text value='{{.Text}}'>
+			<label for=scale>Scale:</label>
+			<input id=scale name=scale value='{{.Scale}}' size=1>
+		<p><input type=submit value='Update'>
+			<input type=submit name=print value='Update and Print'>
+	</fieldset></form>
+</td>
+</tr></table>
+</body></html>
 `))
 
 func getPrinter() (*ql.Printer, error) {
