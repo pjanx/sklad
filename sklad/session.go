@@ -51,7 +51,7 @@ func sessionWrap(inner func(http.ResponseWriter, *http.Request)) func(
 		w.Header().Set("Cache-Control", "no-store")
 
 		redirect := "/login"
-		if r.RequestURI != "/" {
+		if r.RequestURI != "/" && r.Method == http.MethodGet {
 			redirect += "?redirect=" + url.QueryEscape(r.RequestURI)
 		}
 
