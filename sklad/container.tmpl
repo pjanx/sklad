@@ -1,22 +1,23 @@
-{{ define "Title" }}{{ or .Id "Obaly" }}{{ end }}
+{{ define "Title" }}{{/*
+*/}}{{ if .Container }}{{ .Container.Id }}{{ else }}Obaly{{ end }}{{ end }}
 {{ define "Content" }}
 
-{{ if .Id }}
+{{ if .Container }}
 
 <section>
 <header>
-	<h2>{{ .Id }}</h2>
-	<form method=post action="/label?id={{ .Id }}">
+	<h2>{{ .Container.Id }}</h2>
+	<form method=post action="/label?id={{ .Container.Id }}">
 	<input type=submit value="Vytisknout štítek">
 	</form>
-	<form method=post action="/?id={{ .Id }}&amp;remove">
+	<form method=post action="/?id={{ .Container.Id }}&amp;remove">
 	<input type=submit value="Odstranit">
 	</form>
 </header>
 
-<form method=post action="/?id={{ .Id }}">
+<form method=post action="/?id={{ .Container.Id }}">
 <textarea name=description rows=5>
-{{ .Description }}
+{{ .Container.Description }}
 </textarea>
 <footer>
 	<div>
@@ -24,14 +25,14 @@
 		<select name=series id=series>
 {{ range $prefix, $desc := .AllSeries }}
 			<option value="{{ $prefix }}"
-				{{ if eq $prefix $.Series }}selected{{ end }}
+				{{ if eq $prefix $.Container.Series }}selected{{ end }}
 				>{{ $prefix }} &mdash; {{ $desc }}</option>
 {{ end }}
 		</select>
 	</div>
 	<div>
 		<label for=parent>Nadobal:</label>
-		<input type=text name=parent id=parent value="{{ .Parent }}">
+		<input type=text name=parent id=parent value="{{ .Container.Parent }}">
 	</div>
 	<input type=submit value="Uložit">
 </footer>
@@ -54,7 +55,6 @@
 		<select name=series id=series>
 {{ range $prefix, $desc := .AllSeries }}
 			<option value="{{ $prefix }}"
-				{{ if eq $prefix $.Series }}selected{{ end }}
 				>{{ $prefix }} &mdash; {{ $desc }}</option>
 {{ end }}
 		</select>
@@ -74,7 +74,7 @@
 {{ range .Children }}
 <section>
 <header>
-	<h3><a href="/container?id={{ .Id }}">{{ .Id }}</a></h3>
+	<h3><a href="/?id={{ .Id }}">{{ .Id }}</a></h3>
 	<form method=post action="/label?id={{ .Id }}">
 	<input type=submit value="Vytisknout štítek">
 	</form>
@@ -84,6 +84,12 @@
 </header>
 {{ if .Description }}
 <p>{{ .Description }}
+{{ end }}
+{{ if .Children }}
+<p>
+{{ range .Children }}
+<a href="/?id={{ .Id }}">{{ .Id }}</a>
+{{ end }}
 {{ end }}
 </section>
 {{ else }}

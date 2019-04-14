@@ -13,6 +13,8 @@ type Series struct {
 	Description string // what kind of containers this is for
 }
 
+type ContainerId string
+
 type Container struct {
 	Series      string      // PK: what series does this belong to
 	Number      uint        // PK: order within the series
@@ -20,10 +22,13 @@ type Container struct {
 	Description string      // description and/or contents of this container
 }
 
-type ContainerId string
-
 func (c *Container) Id() ContainerId {
 	return ContainerId(fmt.Sprintf("%s%s%d", db.Prefix, c.Series, c.Number))
+}
+
+func (c *Container) Children() []*Container {
+	// TODO: Sort this by Id, or maybe even return a map[string]*Container.
+	return indexChildren[c.Id()]
 }
 
 type Database struct {

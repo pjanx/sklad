@@ -92,35 +92,24 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 		allSeries[s.Prefix] = s.Description
 	}
 
+	var container *Container
 	children := []*Container{}
-	id := ContainerId(r.FormValue("id"))
-	description := ""
-	series := ""
-	parent := ContainerId("")
 
-	if id == "" {
-		children = indexChildren[id]
-	} else if container, ok := indexContainer[id]; ok {
-		children = indexChildren[id]
-		description = container.Description
-		series = container.Series
-		parent = container.Parent
+	if id := ContainerId(r.FormValue("id")); id == "" {
+		children = indexChildren[""]
+	} else if c, ok := indexContainer[id]; ok {
+		children = c.Children()
+		container = c
 	}
 
 	params := struct {
-		Id          ContainerId
-		Description string
-		Children    []*Container
-		Series      string
-		Parent      ContainerId
-		AllSeries   map[string]string
+		Container *Container
+		Children  []*Container
+		AllSeries map[string]string
 	}{
-		Id:          id,
-		Description: description,
-		Children:    children,
-		Series:      series,
-		Parent:      parent,
-		AllSeries:   allSeries,
+		Container: container,
+		Children:  children,
+		AllSeries: allSeries,
 	}
 
 	executeTemplate("container.tmpl", w, &params)
@@ -171,6 +160,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	_ = query
 
 	// TODO: Query the database for exact matches and fulltext.
+	//  - Will want to show the full path from the root "" container.
 
 	params := struct{}{}
 
