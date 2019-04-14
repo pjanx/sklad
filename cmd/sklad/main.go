@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -83,11 +84,40 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func handleContainer(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		// TODO
+func handleContainerPost(r *http.Request) error {
+	id := ContainerId(r.FormValue("id"))
+	description := r.FormValue("description")
+	series := r.FormValue("series")
+	parent := ContainerId(r.FormValue("parent"))
+	_, remove := r.Form["remove"]
+
+	if container, ok := indexContainer[id]; ok {
+		if remove {
+			return dbContainerRemove(container)
+		} else {
+			c := *container
+			c.Description = description
+			c.Series = series
+			return dbContainerUpdate(container, c)
+		}
+	} else if remove {
+		return errNoSuchContainer
+	} else {
+		return dbContainerCreate(&Container{
+			Series:      series,
+			Parent:      parent,
+			Description: description,
+		})
 	}
-	if r.Method != http.MethodGet {
+}
+
+func handleContainer(w http.ResponseWriter, r *http.Request) {
+	var err error
+	if r.Method == http.MethodPost {
+		err = handleContainerPost(r)
+		// XXX: This is rather ugly. When removing, we want to keep
+		// the context id, in addition to the id being changed.
+	} else if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -98,33 +128,70 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var container *Container
-	children := []*Container{}
+	children := indexChildren[""]
 
-	if id := ContainerId(r.FormValue("id")); id == "" {
-		children = indexChildren[""]
-	} else if c, ok := indexContainer[id]; ok {
+	if c, ok := indexContainer[ContainerId(r.FormValue("id"))]; ok {
 		children = c.Children()
 		container = c
 	}
 
 	params := struct {
-		Container *Container
-		Children  []*Container
-		AllSeries map[string]string
+		Error                           error
+		ErrorNoSuchSeries               bool
+		ErrorContainerAlreadyExists     bool
+		ErrorNoSuchContainer            bool
+		ErrorCannotChangeSeriesNotEmpty bool
+		ErrorCannotChangeNumber         bool
+		ErrorContainerInUse             bool
+		Container                       *Container
+		Children                        []*Container
+		AllSeries                       map[string]string
 	}{
-		Container: container,
-		Children:  children,
-		AllSeries: allSeries,
+		Error:                           err,
+		ErrorNoSuchSeries:               err == errNoSuchSeries,
+		ErrorContainerAlreadyExists:     err == errContainerAlreadyExists,
+		ErrorNoSuchContainer:            err == errNoSuchContainer,
+		ErrorCannotChangeSeriesNotEmpty: err == errCannotChangeSeriesNotEmpty,
+		ErrorCannotChangeNumber:         err == errCannotChangeNumber,
+		ErrorContainerInUse:             err == errContainerInUse,
+		Container:                       container,
+		Children:                        children,
+		AllSeries:                       allSeries,
 	}
 
 	executeTemplate("container.tmpl", w, &params)
 }
 
-func handleSeries(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		// TODO
+func handleSeriesPost(r *http.Request) error {
+	prefix := r.FormValue("prefix")
+	description := r.FormValue("description")
+	_, remove := r.Form["remove"]
+
+	if series, ok := indexSeries[prefix]; ok {
+		if remove {
+			return dbSeriesRemove(series)
+		} else {
+			s := *series
+			s.Description = description
+			return dbSeriesUpdate(series, s)
+		}
+	} else if remove {
+		return errNoSuchSeries
+	} else {
+		return dbSeriesCreate(&Series{
+			Prefix:      prefix,
+			Description: description,
+		})
 	}
-	if r.Method != http.MethodGet {
+}
+
+func handleSeries(w http.ResponseWriter, r *http.Request) {
+	var err error
+	if r.Method == http.MethodPost {
+		err = handleSeriesPost(r)
+		// XXX: This is rather ugly.
+		r.Form = url.Values{}
+	} else if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -140,16 +207,30 @@ func handleSeries(w http.ResponseWriter, r *http.Request) {
 	if prefix == "" {
 	} else if series, ok := indexSeries[prefix]; ok {
 		description = series.Description
+	} else {
+		err = errNoSuchSeries
 	}
 
 	params := struct {
-		Prefix      string
-		Description string
-		AllSeries   map[string]*Series
+		Error                    error
+		ErrorInvalidPrefix       bool
+		ErrorSeriesAlreadyExists bool
+		ErrorCannotChangePrefix  bool
+		ErrorNoSuchSeries        bool
+		ErrorSeriesInUse         bool
+		Prefix                   string
+		Description              string
+		AllSeries                map[string]*Series
 	}{
-		Prefix:      prefix,
-		Description: description,
-		AllSeries:   allSeries,
+		Error:                    err,
+		ErrorInvalidPrefix:       err == errInvalidPrefix,
+		ErrorSeriesAlreadyExists: err == errSeriesAlreadyExists,
+		ErrorCannotChangePrefix:  err == errCannotChangePrefix,
+		ErrorNoSuchSeries:        err == errNoSuchSeries,
+		ErrorSeriesInUse:         err == errSeriesInUse,
+		Prefix:                   prefix,
+		Description:              description,
+		AllSeries:                allSeries,
 	}
 
 	executeTemplate("series.tmpl", w, &params)

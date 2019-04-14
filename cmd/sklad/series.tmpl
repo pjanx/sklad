@@ -1,6 +1,20 @@
 {{ define "Title" }}{{ or .Prefix "Řady" }}{{ end }}
 {{ define "Content" }}
 
+{{ if .ErrorInvalidPrefix }}
+<p>Chyba: Neplatný prefix.
+{{ else if .ErrorSeriesAlreadyExists }}
+<p>Chyba: Řada s tímto prefixem už existuje.
+{{ else if .ErrorCannotChangePrefix }}
+<p>Chyba: Prefix nelze měnit.
+{{ else if .ErrorNoSuchSeries }}
+<p>Chyba: Řada neexistuje.
+{{ else if .ErrorSeriesInUse }}
+<p>Chyba: Řada se používá.
+{{ else if .Error }}
+<p>Chyba: {{ .Error }}
+{{ end }}
+
 {{ if .Prefix }}
 <h2>{{ .Prefix }}</h2>
 

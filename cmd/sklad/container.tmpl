@@ -2,6 +2,22 @@
 */}}{{ if .Container }}{{ .Container.Id }}{{ else }}Obaly{{ end }}{{ end }}
 {{ define "Content" }}
 
+{{ if .ErrorNoSuchSeries }}
+<p>Chyba: Řada neexistuje.
+{{ else if .ErrorContainerAlreadyExists }}
+<p>Chyba: Obal s tímto ID už existuje.
+{{ else if .ErrorNoSuchContainer }}
+<p>Chyba: Obal neexistuje.
+{{ else if .ErrorCannotChangeSeriesNotEmpty }}
+<p>Chyba: Řadu u neprázdných obalů nelze měnit.
+{{ else if .ErrorCannotChangeNumber }}
+<p>Chyba: Číslo obalu v řadě nelze měnit.
+{{ else if .ErrorContainerInUse }}
+<p>Chyba: Obal se používá.
+{{ else if .Error }}
+<p>Chyba: {{ .Error }}
+{{ end }}
+
 {{ if .Container }}
 
 <section>

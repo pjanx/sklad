@@ -14,6 +14,7 @@ import (
 type Series struct {
 	Prefix      string // PK: prefix
 	Description string // what kind of containers this is for
+	Counter     uint   // last used container number
 }
 
 func (s *Series) Containers() []*Container {
@@ -71,9 +72,6 @@ var (
 	labelFont *bdf.Font
 )
 
-// TODO: Some functions to add, remove and change things in the database.
-// Indexes must be kept valid, just like any invariants.
-
 func dbSearchSeries(query string) (result []*Series) {
 	query = strings.ToLower(query)
 	added := map[string]bool{}
@@ -108,6 +106,134 @@ func dbSearchContainers(query string) (result []*Container) {
 		}
 	}
 	return
+}
+
+var errInvalidPrefix = errors.New("invalid prefix")
+var errSeriesAlreadyExists = errors.New("series already exists")
+var errCannotChangePrefix = errors.New("cannot change the prefix")
+var errNoSuchSeries = errors.New("no such series")
+var errSeriesInUse = errors.New("series is in use")
+
+// Find and filter out the series in O(n).
+func filterSeries(slice []*Series, s *Series) (filtered []*Series) {
+	for _, series := range slice {
+		if s != series {
+			filtered = append(filtered, series)
+		}
+	}
+	return
+}
+
+func dbSeriesCreate(s *Series) error {
+	if s.Prefix == "" {
+		return errInvalidPrefix
+	}
+	if _, ok := indexSeries[s.Prefix]; ok {
+		return errSeriesAlreadyExists
+	}
+	db.Series = append(db.Series, s)
+	indexSeries[s.Prefix] = s
+	return dbCommit()
+}
+
+func dbSeriesUpdate(s *Series, updated Series) error {
+	// It might be easily possible with no members, though this
+	// is not reachable from the UI and can be solved by deletion.
+	if updated.Prefix != s.Prefix {
+		return errCannotChangePrefix
+	}
+	*s = updated
+	return dbCommit()
+}
+
+func dbSeriesRemove(s *Series) error {
+	if len(s.Containers()) > 0 {
+		return errSeriesInUse
+	}
+
+	db.Series = filterSeries(db.Series, s)
+
+	delete(indexSeries, s.Prefix)
+	delete(indexMembers, s.Prefix)
+	return dbCommit()
+}
+
+var errContainerAlreadyExists = errors.New("container already exists")
+var errNoSuchContainer = errors.New("no such container")
+var errCannotChangeSeriesNotEmpty = errors.New(
+	"cannot change the series of a non-empty container")
+var errCannotChangeNumber = errors.New("cannot change the number")
+var errContainerInUse = errors.New("container is in use")
+
+// Find and filter out the container in O(n).
+func filterContainer(slice []*Container, c *Container) (filtered []*Container) {
+	for _, container := range slice {
+		if c != container {
+			filtered = append(filtered, container)
+		}
+	}
+	return
+}
+
+func dbContainerCreate(c *Container) error {
+	if series, ok := indexSeries[c.Series]; !ok {
+		return errNoSuchSeries
+	} else if c.Number == 0 {
+		c.Number = series.Counter
+		for {
+			c.Number++
+			if _, ok := indexContainer[c.Id()]; !ok {
+				break
+			}
+		}
+		series.Counter = c.Number
+	}
+	if _, ok := indexContainer[c.Id()]; ok {
+		return errContainerAlreadyExists
+	}
+	if c.Parent != "" && indexContainer[c.Parent] == nil {
+		return errNoSuchContainer
+	}
+
+	db.Containers = append(db.Containers, c)
+
+	indexMembers[c.Series] = append(indexMembers[c.Series], c)
+	indexChildren[c.Parent] = append(indexChildren[c.Parent], c)
+	indexContainer[c.Id()] = c
+	return dbCommit()
+}
+
+func dbContainerUpdate(c *Container, updated Container) error {
+	newId := updated.Id()
+	if updated.Series != c.Series && len(c.Children()) > 0 {
+		return errCannotChangeSeriesNotEmpty
+	}
+	if updated.Number != c.Number {
+		return errCannotChangeNumber
+	}
+	if _, ok := indexContainer[newId]; ok && newId != c.Id() {
+		return errContainerAlreadyExists
+	}
+	if updated.Parent != c.Parent {
+		indexChildren[c.Parent] = filterContainer(indexChildren[c.Parent], c)
+		indexChildren[newId] = append(indexChildren[newId], c)
+	}
+	*c = updated
+	return dbCommit()
+}
+
+func dbContainerRemove(c *Container) error {
+	if len(indexChildren[c.Id()]) > 0 {
+		return errContainerInUse
+	}
+
+	db.Containers = filterContainer(db.Containers, c)
+	indexMembers[c.Series] = filterContainer(indexMembers[c.Series], c)
+	indexChildren[c.Parent] = filterContainer(indexChildren[c.Parent], c)
+
+	delete(indexContainer, c.Id())
+	delete(indexChildren, c.Id())
+	return dbCommit()
 }
 
 func dbCommit() error {
