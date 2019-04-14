@@ -108,16 +108,14 @@ func (p *Printer) Initialize() error {
 
 	// Flush any former responses in the printer's queue.
 	//
-	// I'm not sure if this is necessary, or rather whether the kernel driver
-	// does any buffering that could cause data to be returned at this point.
-	/*
-		var dummy [32]byte
-		for {
-			if _, err := f.Read(dummy[:]); err == io.EOF {
-				break
-			}
+	// I haven't checked if this is the kernel driver or the printer doing
+	// the buffering that causes data to be returned at this point.
+	var dummy [32]byte
+	for {
+		if _, err := p.File.Read(dummy[:]); err == io.EOF {
+			break
 		}
-	*/
+	}
 
 	return nil
 }

@@ -185,10 +185,12 @@ func printLabel(id string) error {
 	}
 	defer printer.Close()
 
-	printer.StatusNotify = func(status *ql.Status) {
-		log.Printf("\x1b[1mreceived status\x1b[m\n%+v\n%s",
-			status[:], status)
-	}
+	/*
+		printer.StatusNotify = func(status *ql.Status) {
+			log.Printf("\x1b[1mreceived status\x1b[m\n%+v\n%s",
+				status[:], status)
+		}
+	*/
 
 	if err := printer.Initialize(); err != nil {
 		return err
