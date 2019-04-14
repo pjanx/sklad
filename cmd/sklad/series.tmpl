@@ -21,15 +21,24 @@
 </form>
 </section>
 
-{{ range $prefix, $desc := .AllSeries }}
+{{ range .AllSeries }}
 <section>
 <header>
-	<h3><a href="/series?prefix={{ $prefix }}">{{ $prefix }}</a></h3>
-	<form method=post action="/series?prefix={{ $prefix }}">
-	<input type=text name=description value="{{ $desc }}"
+	<h3><a href="/series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
+{{ with $count := len .Containers }}
+{{ if eq $count 1 }}
+	<p>{{ $count }} obal
+{{ else if and (ge $count 2) (le $count 4) }}
+	<p>{{ $count }} obaly
+{{ else if gt $count 0 }}
+	<p>{{ $count }} obalů
+{{ end }}
+{{ end }}
+	<form method=post action="/series?prefix={{ .Prefix }}">
+	<input type=text name=description value="{{ .Description }}"
 	><input type=submit value="Uložit">
 	</form>
-	<form method=post action="/series?prefix={{ $prefix }}&amp;remove">
+	<form method=post action="/series?prefix={{ .Prefix }}&amp;remove">
 	<input type=submit value="Odstranit">
 	</form>
 </header>

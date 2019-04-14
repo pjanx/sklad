@@ -129,9 +129,9 @@ func handleSeries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allSeries := map[string]string{}
+	allSeries := map[string]*Series{}
 	for _, s := range indexSeries {
-		allSeries[s.Prefix] = s.Description
+		allSeries[s.Prefix] = s
 	}
 
 	prefix := r.FormValue("prefix")
@@ -145,7 +145,7 @@ func handleSeries(w http.ResponseWriter, r *http.Request) {
 	params := struct {
 		Prefix      string
 		Description string
-		AllSeries   map[string]string
+		AllSeries   map[string]*Series
 	}{
 		Prefix:      prefix,
 		Description: description,

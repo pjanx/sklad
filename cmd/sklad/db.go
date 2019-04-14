@@ -16,6 +16,10 @@ type Series struct {
 	Description string // what kind of containers this is for
 }
 
+func (s *Series) Containers() []*Container {
+	return indexMembers[s.Prefix]
+}
+
 type ContainerId string
 
 type Container struct {
@@ -60,6 +64,7 @@ var (
 	dbLog  *os.File
 
 	indexSeries    = map[string]*Series{}
+	indexMembers   = map[string][]*Container{}
 	indexContainer = map[ContainerId]*Container{}
 	indexChildren  = map[ContainerId][]*Container{}
 
@@ -184,6 +189,7 @@ func loadDatabase() error {
 			}
 		}
 		indexChildren[pv.Parent] = append(indexChildren[pv.Parent], pv)
+		indexMembers[pv.Series] = append(indexMembers[pv.Series], pv)
 	}
 
 	// Validate that no container is a parent of itself on any level.
