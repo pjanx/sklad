@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"html/template"
 	"io"
 	"log"
@@ -9,6 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"janouch.name/sklad/imgutil"
+	"janouch.name/sklad/label"
+	"janouch.name/sklad/ql"
 )
 
 var templates = map[string]*template.Template{}
@@ -170,18 +175,59 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	executeTemplate("search.tmpl", w, &params)
 }
 
+func printLabel(id string) error {
+	printer, err := ql.Open()
+	if err != nil {
+		return err
+	}
+	if printer == nil {
+		return errors.New("no suitable printer found")
+	}
+	defer printer.Close()
+
+	printer.StatusNotify = func(status *ql.Status) {
+		log.Printf("\x1b[1mreceived status\x1b[m\n%+v\n%s",
+			status[:], status)
+	}
+
+	if err := printer.Initialize(); err != nil {
+		return err
+	}
+	if err := printer.UpdateStatus(); err != nil {
+		return err
+	}
+
+	mediaInfo := ql.GetMediaInfo(
+		printer.LastStatus.MediaWidthMM(),
+		printer.LastStatus.MediaLengthMM(),
+	)
+	if mediaInfo == nil {
+		return errors.New("unknown media")
+	}
+
+	return printer.Print(&imgutil.LeftRotate{Image: label.GenLabelForHeight(
+		labelFont, id, mediaInfo.PrintAreaPins, db.BDFScale)})
+}
+
 func handleLabel(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
-	id := r.FormValue("id")
-	_ = id
+	params := struct {
+		Id        string
+		UnknownId bool
+		Error     error
+	}{
+		Id: r.FormValue("id"),
+	}
 
-	// TODO: See if such a container exists, print a label on the printer.
-
-	params := struct{}{}
+	if c := indexContainer[ContainerId(params.Id)]; c == nil {
+		params.UnknownId = true
+	} else {
+		params.Error = printLabel(params.Id)
+	}
 
 	executeTemplate("label.tmpl", w, &params)
 }

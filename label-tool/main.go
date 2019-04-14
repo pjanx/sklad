@@ -4,59 +4,19 @@ import (
 	"errors"
 	"html/template"
 	"image"
-	"image/draw"
 	"image/png"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 
-	"github.com/boombuler/barcode"
-	"github.com/boombuler/barcode/qr"
-
 	"janouch.name/sklad/bdf"
 	"janouch.name/sklad/imgutil"
+	"janouch.name/sklad/label"
 	"janouch.name/sklad/ql"
 )
 
 var font *bdf.Font
-
-func genLabelForHeight(text string, height, scale int) image.Image {
-	// Create a scaled bitmap of the text label.
-	textRect, _ := font.BoundString(text)
-	textImg := image.NewRGBA(textRect)
-	draw.Draw(textImg, textRect, image.White, image.ZP, draw.Src)
-	font.DrawString(textImg, image.ZP, text)
-
-	scaledTextImg := imgutil.Scale{Image: textImg, Scale: scale}
-	scaledTextRect := scaledTextImg.Bounds()
-
-	remains := height - scaledTextRect.Dy() - 20
-
-	width := scaledTextRect.Dx()
-	if remains > width {
-		width = remains
-	}
-
-	// Create a scaled bitmap of the QR code.
-	qrImg, _ := qr.Encode(text, qr.H, qr.Auto)
-	qrImg, _ = barcode.Scale(qrImg, remains, remains)
-	qrRect := qrImg.Bounds()
-
-	// Combine.
-	combinedRect := image.Rect(0, 0, width, height)
-	combinedImg := image.NewRGBA(combinedRect)
-	draw.Draw(combinedImg, combinedRect, image.White, image.ZP, draw.Src)
-	draw.Draw(combinedImg,
-		combinedRect.Add(image.Point{X: (width - qrRect.Dx()) / 2, Y: 0}),
-		qrImg, image.ZP, draw.Src)
-
-	target := image.Rect(
-		(width-scaledTextRect.Dx())/2, qrRect.Dy()+20,
-		combinedRect.Max.X, combinedRect.Max.Y)
-	draw.Draw(combinedImg, target, &scaledTextImg, scaledTextRect.Min, draw.Src)
-	return combinedImg
-}
 
 var tmpl = template.Must(template.New("form").Parse(`
 	<!DOCTYPE html>
@@ -183,12 +143,12 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		params.Scale = 3
 	}
 
-	var label image.Image
+	var img image.Image
 	if mediaInfo != nil {
-		label = &imgutil.LeftRotate{Image: genLabelForHeight(
-			params.Text, mediaInfo.PrintAreaPins, params.Scale)}
+		img = &imgutil.LeftRotate{Image: label.GenLabelForHeight(
+			font, params.Text, mediaInfo.PrintAreaPins, params.Scale)}
 		if r.FormValue("print") != "" {
-			if err := printer.Print(label); err != nil {
+			if err := printer.Print(img); err != nil {
 				log.Println("print error:", err)
 			}
 		}
@@ -206,7 +166,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/png")
-	if err := png.Encode(w, label); err != nil {
+	if err := png.Encode(w, img); err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}

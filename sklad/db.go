@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"janouch.name/sklad/bdf"
 )
 
 type Series struct {
@@ -46,6 +48,9 @@ type Database struct {
 	Prefix     string       // prefix for all container IDs
 	Series     []*Series    // all known series
 	Containers []*Container // all known containers
+
+	BDFPath  string // path to bitmap font file
+	BDFScale int    // integer scaling for the bitmap font
 }
 
 var (
@@ -57,6 +62,8 @@ var (
 	indexSeries    = map[string]*Series{}
 	indexContainer = map[ContainerId]*Container{}
 	indexChildren  = map[ContainerId][]*Container{}
+
+	labelFont *bdf.Font
 )
 
 // TODO: Some functions to add, remove and change things in the database.
@@ -189,6 +196,20 @@ func loadDatabase() error {
 			}
 			parents[pv.Parent] = true
 			pv = indexContainer[pv.Parent]
+		}
+	}
+
+	// Prepare label printing.
+	if db.BDFScale <= 0 {
+		db.BDFScale = 1
+	}
+
+	if f, err := os.Open(db.BDFPath); err != nil {
+		return fmt.Errorf("cannot load label font: %s", err)
+	} else {
+		defer f.Close()
+		if labelFont, err = bdf.NewFromBDF(f); err != nil {
+			return fmt.Errorf("cannot load label font: %s", err)
 		}
 	}
 

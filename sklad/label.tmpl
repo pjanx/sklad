@@ -1,0 +1,13 @@
+{{ define "Title" }}Tisk štítku{{ end }}
+{{ define "Content" }}
+<h2>Tisk štítku pro {{ .Id }}</h2>
+
+{{ if .UnknownId }}
+<p>Neznámý obal.
+{{ else if .Error }}
+<p>Tisk selhal: {{ .Error }}
+{{ else }}
+<p>Tisk proběhl úspěšně.
+{{ end }}
+
+{{ end }}
