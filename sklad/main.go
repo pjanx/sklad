@@ -259,9 +259,6 @@ func main() {
 		templates[name] = template.Must(template.ParseFiles("base.tmpl", name))
 	}
 
-	// TODO: Eventually we will need to load a font file for label printing.
-	//  - The path might be part of configuration, or implicit by filename.
-
 	http.HandleFunc("/login", wrap(handleLogin))
 	http.HandleFunc("/logout", sessionWrap(wrap(handleLogout)))
 
