@@ -163,6 +163,7 @@ var errNoSuchContainer = errors.New("no such container")
 var errCannotChangeSeriesNotEmpty = errors.New(
 	"cannot change the series of a non-empty container")
 var errCannotChangeNumber = errors.New("cannot change the number")
+var errWouldContainItself = errors.New("container would contain itself")
 var errContainerInUse = errors.New("container is in use")
 
 // Find and filter out the container in O(n).
@@ -204,19 +205,27 @@ func dbContainerCreate(c *Container) error {
 }
 
 func dbContainerUpdate(c *Container, updated Container) error {
-	newId := updated.Id()
+	newID := updated.Id()
 	if updated.Series != c.Series && len(c.Children()) > 0 {
 		return errCannotChangeSeriesNotEmpty
 	}
 	if updated.Number != c.Number {
 		return errCannotChangeNumber
 	}
-	if _, ok := indexContainer[newId]; ok && newId != c.Id() {
+	if _, ok := indexContainer[newID]; ok && newID != c.Id() {
 		return errContainerAlreadyExists
 	}
 	if updated.Parent != c.Parent {
+		// Relying on the invariant that we can't change the ID
+		// of a non-empty container.
+		for pv := &updated; pv.Parent != ""; pv = indexContainer[pv.Parent] {
+			if pv.Parent == updated.Id() {
+				return errWouldContainItself
+			}
+		}
+
 		indexChildren[c.Parent] = filterContainer(indexChildren[c.Parent], c)
-		indexChildren[newId] = append(indexChildren[newId], c)
+		indexChildren[newID] = append(indexChildren[newID], c)
 	}
 	*c = updated
 	return dbCommit()

@@ -130,6 +130,7 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 		ErrorNoSuchContainer            bool
 		ErrorCannotChangeSeriesNotEmpty bool
 		ErrorCannotChangeNumber         bool
+		ErrorWouldContainItself         bool
 		ErrorContainerInUse             bool
 		Container                       *Container
 		Children                        []*Container
@@ -141,6 +142,7 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 		ErrorNoSuchContainer:            err == errNoSuchContainer,
 		ErrorCannotChangeSeriesNotEmpty: err == errCannotChangeSeriesNotEmpty,
 		ErrorCannotChangeNumber:         err == errCannotChangeNumber,
+		ErrorWouldContainItself:         err == errWouldContainItself,
 		ErrorContainerInUse:             err == errContainerInUse,
 		Container:                       container,
 		Children:                        children,

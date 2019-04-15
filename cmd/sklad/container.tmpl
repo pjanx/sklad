@@ -12,6 +12,8 @@
 <p>Chyba: Řadu u neprázdných obalů nelze měnit.
 {{ else if .ErrorCannotChangeNumber }}
 <p>Chyba: Číslo obalu v řadě nelze měnit.
+{{ else if .ErrorWouldContainItself }}
+<p>Chyba: Obal by obsahoval sám sebe.
 {{ else if .ErrorContainerInUse }}
 <p>Chyba: Obal se používá.
 {{ else if .Error }}
