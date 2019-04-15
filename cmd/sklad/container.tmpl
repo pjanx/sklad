@@ -36,7 +36,7 @@
 </header>
 
 <form method=post action="container?id={{ .Container.Id }}">
-<textarea name=description rows=5>
+<textarea name=description rows="{{ max 5 (lines .Container.Description) }}">
 {{ .Container.Description }}
 </textarea>
 <footer>

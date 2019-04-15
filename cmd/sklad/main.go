@@ -334,6 +334,18 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var funcMap = template.FuncMap{
+	"max": func(i, j int) int {
+		if i > j {
+			return i
+		}
+		return j
+	},
+	"lines": func(s string) int {
+		return strings.Count(s, "\n") + 1
+	},
+}
+
 func main() {
 	// Randomize the RNG for session string generation.
 	rand.Seed(time.Now().UnixNano())
@@ -356,7 +368,8 @@ func main() {
 		log.Fatalln(err)
 	}
 	for _, name := range m {
-		templates[name] = template.Must(template.ParseFiles("base.tmpl", name))
+		templates[name] = template.Must(template.New("base.tmpl").
+			Funcs(funcMap).ParseFiles("base.tmpl", name))
 	}
 
 	http.HandleFunc("/", handle)
