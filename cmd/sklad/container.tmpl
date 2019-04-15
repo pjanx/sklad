@@ -27,7 +27,7 @@
 	<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
 {{ end }}
 	</h2>
-	<form method=post action="label?id={{ .Container.Id }}">
+	<form method=post action="label?id={{ .Container.Id }}" target=_blank>
 	<input type=submit value="Vytisknout štítek">
 	</form>
 	<form method=post action="container?id={{ .Container.Id }}&amp;remove">
@@ -99,7 +99,7 @@
 	<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
 {{ end }}
 	</h3>
-	<form method=post action="label?id={{ .Id }}">
+	<form method=post action="label?id={{ .Id }}" target=_blank>
 	<input type=submit value="Vytisknout štítek">
 	</form>
 	<form method=post action="container?id={{ .Id }}&amp;remove">
