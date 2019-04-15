@@ -22,7 +22,11 @@
 
 <section>
 <header>
-	<h2>{{ .Container.Id }}</h2>
+	<h2>{{ .Container.Id }}
+{{ range .Container.Path }}
+	<small>&laquo; <a href="/?id={{ . }}">{{ . }}</a></small>
+{{ end }}
+	</h2>
 	<form method=post action="/label?id={{ .Container.Id }}">
 	<input type=submit value="Vytisknout štítek">
 	</form>
@@ -90,7 +94,11 @@
 {{ range .Children }}
 <section>
 <header>
-	<h3><a href="/?id={{ .Id }}">{{ .Id }}</a></h3>
+	<h3><a href="/?id={{ .Id }}">{{ .Id }}</a>
+{{ range .Path }}
+	<small>&laquo; <a href="/?id={{ . }}">{{ . }}</a></small>
+{{ end }}
+	</h3>
 	<form method=post action="/label?id={{ .Id }}">
 	<input type=submit value="Vytisknout štítek">
 	</form>
