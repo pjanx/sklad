@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"janouch.name/sklad/imgutil"
@@ -73,9 +74,9 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 
 func handleContainerPost(r *http.Request) error {
 	id := ContainerId(r.FormValue("id"))
-	description := r.FormValue("description")
+	description := strings.TrimSpace(r.FormValue("description"))
 	series := r.FormValue("series")
-	parent := ContainerId(r.FormValue("parent"))
+	parent := ContainerId(strings.TrimSpace(r.FormValue("parent")))
 	_, remove := r.Form["remove"]
 
 	if container, ok := indexContainer[id]; ok {
@@ -150,8 +151,8 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSeriesPost(r *http.Request) error {
-	prefix := r.FormValue("prefix")
-	description := r.FormValue("description")
+	prefix := strings.TrimSpace(r.FormValue("prefix"))
+	description := strings.TrimSpace(r.FormValue("description"))
 	_, remove := r.Form["remove"]
 
 	if series, ok := indexSeries[prefix]; ok {
