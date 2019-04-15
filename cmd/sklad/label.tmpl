@@ -1,6 +1,6 @@
 {{ define "Title" }}Tisk štítku{{ end }}
 {{ define "Content" }}
-<h2>Tisk štítku pro {{ .Id }}</h2>
+<h2>Tisk štítku pro <a href="container?id={{ .Id }}">{{ .Id }}</a></h2>
 
 {{ if .UnknownId }}
 <p>Neznámý obal.
