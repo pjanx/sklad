@@ -8,7 +8,7 @@
 {{ range .Series }}
 <section>
 <header>
-	<h3><a href="/series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
+	<h3><a href="series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
 	<p>{{ .Description }}
 </header>
 </section>
@@ -21,9 +21,9 @@
 {{ range .Containers }}
 <section>
 <header>
-	<h3><a href="/?id={{ .Id }}">{{ .Id }}</a>
+	<h3><a href="container?id={{ .Id }}">{{ .Id }}</a>
 {{ range .Path }}
-	<small>&laquo; <a href="/?id={{ . }}">{{ . }}</a></small>
+	<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
 {{ end }}
 	</h3>
 </header>

@@ -24,7 +24,7 @@
 {{ else }}
 
 <section>
-<form method=post action="/series">
+<form method=post action="series">
 <header>
 	<h3>Nová řada</h3>
 	<input type=text name=prefix placeholder="Prefix řady">
@@ -38,7 +38,7 @@
 {{ range .AllSeries }}
 <section>
 <header>
-	<h3><a href="/series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
+	<h3><a href="series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
 {{ with $count := len .Containers }}
 {{ if eq $count 1 }}
 	<p>{{ $count }} obal
@@ -48,11 +48,11 @@
 	<p>{{ $count }} obalů
 {{ end }}
 {{ end }}
-	<form method=post action="/series?prefix={{ .Prefix }}">
+	<form method=post action="series?prefix={{ .Prefix }}">
 	<input type=text name=description value="{{ .Description }}"
 	><input type=submit value="Uložit">
 	</form>
-	<form method=post action="/series?prefix={{ .Prefix }}&amp;remove">
+	<form method=post action="series?prefix={{ .Prefix }}&amp;remove">
 	<input type=submit value="Odstranit">
 	</form>
 </header>

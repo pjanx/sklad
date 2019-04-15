@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -25,24 +26,10 @@ func executeTemplate(name string, w io.Writer, data interface{}) {
 	}
 }
 
-func wrap(inner func(http.ResponseWriter, *http.Request)) func(
-	http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if r.Method == http.MethodGet {
-			w.Header().Set("Cache-Control", "no-store")
-		}
-		inner(w, r)
-	}
-}
-
 func handleLogin(w http.ResponseWriter, r *http.Request) {
 	redirect := r.FormValue("redirect")
 	if redirect == "" {
-		redirect = "/"
+		redirect = "container"
 	}
 
 	session := sessionGet(w, r)
@@ -81,7 +68,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 
 	session := r.Context().Value(sessionContextKey{}).(*Session)
 	session.LoggedIn = false
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "login", http.StatusSeeOther)
 }
 
 func handleContainerPost(r *http.Request) error {
@@ -315,6 +302,37 @@ func handleLabel(w http.ResponseWriter, r *http.Request) {
 	executeTemplate("label.tmpl", w, &params)
 }
 
+func handle(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if r.Method == http.MethodGet {
+		w.Header().Set("Cache-Control", "no-store")
+	}
+
+	switch _, base := path.Split(r.URL.Path); base {
+	case "login":
+		handleLogin(w, r)
+	case "logout":
+		sessionWrap(handleLogout)(w, r)
+
+	case "container":
+		sessionWrap(handleContainer)(w, r)
+	case "series":
+		sessionWrap(handleSeries)(w, r)
+	case "search":
+		sessionWrap(handleSearch)(w, r)
+	case "label":
+		sessionWrap(handleLabel)(w, r)
+
+	case "":
+		http.Redirect(w, r, "container", http.StatusSeeOther)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
 func main() {
 	// Randomize the RNG for session string generation.
 	rand.Seed(time.Now().UnixNano())
@@ -340,13 +358,6 @@ func main() {
 		templates[name] = template.Must(template.ParseFiles("base.tmpl", name))
 	}
 
-	http.HandleFunc("/login", wrap(handleLogin))
-	http.HandleFunc("/logout", sessionWrap(wrap(handleLogout)))
-
-	http.HandleFunc("/", sessionWrap(wrap(handleContainer)))
-	http.HandleFunc("/series", sessionWrap(wrap(handleSeries)))
-	http.HandleFunc("/search", sessionWrap(wrap(handleSearch)))
-	http.HandleFunc("/label", sessionWrap(wrap(handleLabel)))
-
+	http.HandleFunc("/", handle)
 	log.Fatalln(http.ListenAndServe(address, nil))
 }

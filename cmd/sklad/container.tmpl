@@ -24,18 +24,18 @@
 <header>
 	<h2>{{ .Container.Id }}
 {{ range .Container.Path }}
-	<small>&laquo; <a href="/?id={{ . }}">{{ . }}</a></small>
+	<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
 {{ end }}
 	</h2>
-	<form method=post action="/label?id={{ .Container.Id }}">
+	<form method=post action="label?id={{ .Container.Id }}">
 	<input type=submit value="Vytisknout štítek">
 	</form>
-	<form method=post action="/?id={{ .Container.Id }}&amp;remove">
+	<form method=post action="container?id={{ .Container.Id }}&amp;remove">
 	<input type=submit value="Odstranit">
 	</form>
 </header>
 
-<form method=post action="/?id={{ .Container.Id }}">
+<form method=post action="container?id={{ .Container.Id }}">
 <textarea name=description rows=5>
 {{ .Container.Description }}
 </textarea>
@@ -66,7 +66,7 @@
 <header>
 	<h2>Nový obal</h2>
 </header>
-<form method=post action="/">
+<form method=post action="container">
 <textarea name=description rows=5
 	placeholder="Popis obalu nebo jeho obsahu"></textarea>
 <footer>
@@ -94,15 +94,15 @@
 {{ range .Children }}
 <section>
 <header>
-	<h3><a href="/?id={{ .Id }}">{{ .Id }}</a>
+	<h3><a href="container?id={{ .Id }}">{{ .Id }}</a>
 {{ range .Path }}
-	<small>&laquo; <a href="/?id={{ . }}">{{ . }}</a></small>
+	<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
 {{ end }}
 	</h3>
-	<form method=post action="/label?id={{ .Id }}">
+	<form method=post action="label?id={{ .Id }}">
 	<input type=submit value="Vytisknout štítek">
 	</form>
-	<form method=post action="/?id={{ .Id }}&amp;remove">
+	<form method=post action="container?id={{ .Id }}&amp;remove">
 	<input type=submit value="Odstranit">
 	</form>
 </header>
@@ -112,7 +112,7 @@
 {{ if .Children }}
 <p>
 {{ range .Children }}
-<a href="/?id={{ .Id }}">{{ .Id }}</a>
+<a href="container?id={{ .Id }}">{{ .Id }}</a>
 {{ end }}
 {{ end }}
 </section>

@@ -49,14 +49,14 @@
 	<h1>sklad</h1>
 
 {{ block "HeaderControls" . }}
-	<a href=/>Obaly</a>
-	<a href=/series>Řady</a>
+	<a href="container">Obaly</a>
+	<a href="series">Řady</a>
 
-	<form method=get action=/search>
+	<form method=get action="search">
 	<input type=text name=q autofocus><input type=submit value="Hledat">
 	</form>
 
-	<form method=post action=/logout>
+	<form method=post action="logout">
 	<input type=submit value="Odhlásit">
 	</form>
 {{ end }}
