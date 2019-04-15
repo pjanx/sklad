@@ -9,6 +9,8 @@ The project also contains reusable Go packages with a Brother QL-series USB
 printer driver and a simple BDF bitmap font renderer, as well as a few related
 utilities for previewing, printing and debugging.
 
+image::sklad.png[align="center"]
+
 Building and Running
 --------------------
 Build dependencies: Go +
