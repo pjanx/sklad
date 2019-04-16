@@ -1,16 +1,16 @@
 {{ define "Title" }}&bdquo;{{ .Query }}&ldquo; &mdash; Vyhledávání{{ end }}
 {{ define "Content" }}
 
-<h2>Vyhledávání: &bdquo;{{ .Query }}&ldquo;<h2>
+<h2>Vyhledávání: &bdquo;{{ .Query }}&ldquo;</h2>
 
 <h3>Řady</h3>
 
 {{ range .Series }}
 <section>
-<header>
-	<h3><a href="series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
-	<p>{{ .Description }}
-</header>
+	<header>
+		<h3><a href="series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
+		<p>{{ .Description }}
+	</header>
 </section>
 {{ else }}
 <p>Neodpovídají žádné řady.
@@ -20,16 +20,16 @@
 
 {{ range .Containers }}
 <section>
-<header>
-	<h3><a href="container?id={{ .Id }}">{{ .Id }}</a>
-{{ range .Path }}
-	<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
-{{ end }}
-	</h3>
-</header>
-{{ if .Description }}
-<p>{{ .Description }}
-{{ end }}
+	<header>
+		<h3><a href="container?id={{ .Id }}">{{ .Id }}</a>
+		{{- range .Path }}
+		<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
+		{{- end }}
+		</h3>
+	</header>
+	{{- if .Description }}
+	<p>{{ .Description }}
+	{{- end }}
 </section>
 {{ else }}
 <p>Neodpovídají žádné obaly.

@@ -22,45 +22,42 @@
 <p>{{ .Description }}
 {{ end }}
 {{ else }}
-
 <section>
-<form method=post action="series">
-<header>
-	<h3>Nová řada</h3>
-	<input type=text name=prefix placeholder="Prefix řady">
-	<input type=text name=description placeholder="Popis řady"
-	><input type=submit value="Uložit">
+	<form method=post action="series">
+		<header>
+			<h3>Nová řada</h3>
+			<input type=text name=prefix placeholder="Prefix řady">
+			<input type=text name=description placeholder="Popis řady"
+			><input type=submit value="Uložit">
+		</header>
 	</form>
-</header>
-</form>
 </section>
 
 {{ range .AllSeries }}
 <section>
-<header>
-	<h3><a href="series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
-{{ with $count := len .Containers }}
-{{ if eq $count 1 }}
-	<p>{{ $count }} obal
-{{ else if and (ge $count 2) (le $count 4) }}
-	<p>{{ $count }} obaly
-{{ else if gt $count 0 }}
-	<p>{{ $count }} obalů
-{{ end }}
-{{ end }}
-	<form method=post action="series?prefix={{ .Prefix }}">
-	<input type=text name=description value="{{ .Description }}"
-	><input type=submit value="Uložit">
-	</form>
-	<form method=post action="series?prefix={{ .Prefix }}&amp;remove">
-	<input type=submit value="Odstranit">
-	</form>
-</header>
+	<header>
+		<h3><a href="series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
+		{{- with $count := len .Containers }}
+		{{- if eq $count 1 }}
+		<p>{{ $count }} obal
+		{{- else if and (ge $count 2) (le $count 4) }}
+		<p>{{ $count }} obaly
+		{{- else if gt $count 0 }}
+		<p>{{ $count }} obalů
+		{{- end }}
+		{{- end }}
+		<form method=post action="series?prefix={{ .Prefix }}">
+			<input type=text name=description value="{{ .Description }}"
+			><input type=submit value="Uložit">
+		</form>
+		<form method=post action="series?prefix={{ .Prefix }}&amp;remove">
+			<input type=submit value="Odstranit">
+		</form>
+	</header>
 </section>
 {{ else }}
 <p>Nejsou žádné řady.
 {{ end }}
-
 {{ end }}
 
 {{ end }}

@@ -21,73 +21,73 @@
 {{ end }}
 
 {{ if .Container }}
-
 <section>
-<header>
-	<h2>{{ .Container.Id }}
-{{ range .Container.Path }}
-	<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
-{{ end }}
-	</h2>
-	<form method=post action="label?id={{ .Container.Id }}" target=_blank>
-	<input type=submit value="Vytisknout štítek">
+	<header>
+		<h2>{{ .Container.Id }}
+		{{- range .Container.Path }}
+		<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
+		{{- end }}
+		</h2>
+		<form method=post action="label?id={{ .Container.Id }}" target=_blank>
+			<input type=submit value="Vytisknout štítek">
+		</form>
+		<form method=post action="container?id={{ .Container.Id }}&amp;remove">
+			<input type=submit value="Odstranit">
+		</form>
+	</header>
+	<form method=post action="container?id={{ .Container.Id }}">
+		<textarea name=description
+			rows="{{ max 5 (lines .Container.Description) }}"
+			placeholder="Popis obalu nebo jeho obsahu">
+			{{- .Container.Description -}}
+		</textarea>
+		<footer>
+			<div>
+				<label for=series>Řada:</label>
+				<select name=series id=series>
+				{{- range $prefix, $desc := .AllSeries }}
+					<option value="{{ $prefix }}"
+						{{ if eq $prefix $.Container.Series }}selected{{ end -}}
+						>{{ $prefix }} &mdash; {{ $desc }}</option>
+				{{- end }}
+				</select>
+			</div>
+			<div>
+				<label for=parent>Nadobal:</label>
+				<input type=text name=parent id=parent
+					value="{{ .Container.Parent }}">
+			</div>
+			<input type=submit value="Uložit">
+		</footer>
 	</form>
-	<form method=post action="container?id={{ .Container.Id }}&amp;remove">
-	<input type=submit value="Odstranit">
-	</form>
-</header>
-
-<form method=post action="container?id={{ .Container.Id }}">
-<textarea name=description rows="{{ max 5 (lines .Container.Description) }}"
-	placeholder="Popis obalu nebo jeho obsahu">
-{{ .Container.Description }}</textarea>
-<footer>
-	<div>
-		<label for=series>Řada:</label>
-		<select name=series id=series>
-{{ range $prefix, $desc := .AllSeries }}
-			<option value="{{ $prefix }}"
-				{{ if eq $prefix $.Container.Series }}selected{{ end }}
-				>{{ $prefix }} &mdash; {{ $desc }}</option>
-{{ end }}
-		</select>
-	</div>
-	<div>
-		<label for=parent>Nadobal:</label>
-		<input type=text name=parent id=parent value="{{ .Container.Parent }}">
-	</div>
-	<input type=submit value="Uložit">
-</footer>
-</form>
 </section>
 
 <h2>Podobaly</h3>
-
 {{ else }}
 <section>
-<header>
-	<h2>Nový obal</h2>
-</header>
-<form method=post action="container">
-<textarea name=description rows=5
-	placeholder="Popis obalu nebo jeho obsahu"></textarea>
-<footer>
-	<div>
-		<label for=series>Řada:</label>
-		<select name=series id=series>
-{{ range $prefix, $desc := .AllSeries }}
-			<option value="{{ $prefix }}"
-				>{{ $prefix }} &mdash; {{ $desc }}</option>
-{{ end }}
-		</select>
-	</div>
-	<div>
-		<label for=parent>Nadobal:</label>
-		<input type=text name=parent id=parent value="">
-	</div>
-	<input type=submit value="Uložit">
-</footer>
-</form>
+	<header>
+		<h2>Nový obal</h2>
+	</header>
+	<form method=post action="container">
+		<textarea name=description rows=5
+			placeholder="Popis obalu nebo jeho obsahu"></textarea>
+		<footer>
+			<div>
+				<label for=series>Řada:</label>
+				<select name=series id=series>
+				{{- range $prefix, $desc := .AllSeries }}
+					<option value="{{ $prefix }}"
+						>{{ $prefix }} &mdash; {{ $desc }}</option>
+				{{- end }}
+				</select>
+			</div>
+			<div>
+				<label for=parent>Nadobal:</label>
+				<input type=text name=parent id=parent value="">
+			</div>
+			<input type=submit value="Uložit">
+		</footer>
+	</form>
 </section>
 
 <h2>Obaly nejvyšší úrovně</h2>
@@ -95,28 +95,36 @@
 
 {{ range .Children }}
 <section>
-<header>
-	<h3><a href="container?id={{ .Id }}">{{ .Id }}</a>
-{{ range .Path }}
-	<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
-{{ end }}
-	</h3>
-	<form method=post action="label?id={{ .Id }}" target=_blank>
-	<input type=submit value="Vytisknout štítek">
-	</form>
-	<form method=post action="container?id={{ .Id }}&amp;remove">
-	<input type=submit value="Odstranit">
-	</form>
-</header>
-{{ if .Description }}
-<p>{{ .Description }}
-{{ end }}
-{{ if .Children }}
-<p>
-{{ range .Children }}
-<a href="container?id={{ .Id }}">{{ .Id }}</a>
-{{ end }}
-{{ end }}
+	<header>
+		<h3><a href="container?id={{ .Id }}">{{ .Id }}</a>
+		{{- range .Path }}
+		<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
+		{{- end }}
+		</h3>
+		<form method=post action="label?id={{ .Id }}" target=_blank>
+			{{- if $.Container }}
+			<input type=hidden name=context value="{{ $.Container.Id }}">
+			{{- end }}
+			<input type=submit value="Vytisknout štítek">
+		</form>
+		<form method=post action="container?id={{ .Id }}&amp;remove">
+			{{- if $.Container }}
+			<input type=hidden name=context value="{{ $.Container.Id }}">
+			{{- end }}
+			<input type=submit value="Odstranit">
+		</form>
+	</header>
+
+	{{- if .Description }}
+	<p>{{ .Description }}
+	{{- end }}
+
+	{{- if .Children }}
+	<p>
+	{{- range .Children }}
+	<a href="container?id={{ .Id }}">{{ .Id }}</a>
+	{{- end }}
+	{{- end }}
 </section>
 {{ else }}
 <p>Obal je prázdný.

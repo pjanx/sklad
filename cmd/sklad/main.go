@@ -103,8 +103,11 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if r.Method == http.MethodPost {
 		err = handleContainerPost(r)
-		// XXX: This is rather ugly. When removing, we want to keep
+		// FIXME: This is rather ugly. When removing, we want to keep
 		// the context id, in addition to the id being changed.
+		// TODO: If there were no errors, redirect the user to GET,
+		// which is related to the previous comment.
+		// TODO: If there were errors, use the last data as a prefill.
 	} else if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
