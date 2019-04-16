@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"janouch.name/sklad/imgutil"
@@ -308,6 +309,8 @@ func handleLabel(w http.ResponseWriter, r *http.Request) {
 	executeTemplate("label.tmpl", w, &params)
 }
 
+var mutex sync.Mutex
+
 func handle(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -316,6 +319,9 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		w.Header().Set("Cache-Control", "no-store")
 	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	switch _, base := path.Split(r.URL.Path); base {
 	case "login":
