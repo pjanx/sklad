@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"html"
 	"html/template"
 	"io"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -354,6 +356,19 @@ var funcMap = template.FuncMap{
 	},
 	"lines": func(s string) int {
 		return strings.Count(s, "\n") + 1
+	},
+	"highlight": func(highlight, s string) template.HTML {
+		b, last := strings.Builder{}, 0
+		for _, m := range regexp.MustCompile(
+			`(?i:`+regexp.QuoteMeta(highlight)+`)`).FindAllStringIndex(s, -1) {
+			b.WriteString(html.EscapeString(s[last:m[0]]))
+			b.WriteString(`<mark>`)
+			b.WriteString(html.EscapeString(s[m[0]:m[1]]))
+			b.WriteString(`</mark>`)
+			last = m[1]
+		}
+		b.WriteString(html.EscapeString(s[last:]))
+		return template.HTML(b.String())
 	},
 }
 

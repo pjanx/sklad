@@ -9,7 +9,7 @@
 <section>
 	<header>
 		<h3><a href="series?prefix={{ .Prefix }}">{{ .Prefix }}</a></h3>
-		<p>{{ .Description }}
+		<p>{{ .Description | highlight $.Query }}
 	</header>
 </section>
 {{ else }}
@@ -28,7 +28,7 @@
 		</h3>
 	</header>
 	{{- if .Description }}
-	<p>{{ .Description }}
+	<p>{{ .Description | highlight $.Query }}
 	{{- end }}
 </section>
 {{ else }}
