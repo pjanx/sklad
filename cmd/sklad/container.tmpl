@@ -23,7 +23,7 @@
 {{ if .Container }}
 <section>
 	<header>
-		<h2>{{ .Container.Id }}
+		<h2><a href="container?id={{ .Container.Id }}">{{ .Container.Id }}</a>
 		{{- range .Container.Path }}
 		<small>&laquo; <a href="container?id={{ . }}">{{ . }}</a></small>
 		{{- end }}
