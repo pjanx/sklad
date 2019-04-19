@@ -92,6 +92,7 @@ func handleContainerPost(r *http.Request) error {
 			c := *container
 			c.Description = description
 			c.Series = series
+			c.Parent = parent
 			return dbContainerUpdate(container, c)
 		}
 	} else if remove {
