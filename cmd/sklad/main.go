@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"html"
 	"html/template"
@@ -10,11 +11,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"janouch.name/sklad/imgutil"
@@ -399,5 +402,22 @@ func main() {
 	}
 
 	http.HandleFunc("/", handle)
-	log.Fatalln(http.ListenAndServe(address, nil))
+	server := &http.Server{Addr: address}
+
+	sigs := make(chan os.Signal, 1)
+	errs := make(chan error, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	go func() { errs <- server.ListenAndServe() }()
+
+	select {
+	case <-sigs:
+	case err := <-errs:
+		log.Println(err)
+	}
+
+	// Wait for all HTTP goroutines to finish so that not even the database
+	// log gets corrupted by an interrupted update.
+	if err := server.Shutdown(context.Background()); err != nil {
+		log.Fatalln(err)
+	}
 }
