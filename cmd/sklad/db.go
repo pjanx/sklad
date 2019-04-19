@@ -225,7 +225,7 @@ func dbContainerUpdate(c *Container, updated Container) error {
 		}
 
 		indexChildren[c.Parent] = filterContainer(indexChildren[c.Parent], c)
-		indexChildren[newID] = append(indexChildren[newID], c)
+		indexChildren[updated.Parent] = append(indexChildren[updated.Parent], c)
 	}
 	*c = updated
 	return dbCommit()
