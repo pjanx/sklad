@@ -107,6 +107,12 @@ func handleContainerPost(r *http.Request) error {
 }
 
 func handleContainer(w http.ResponseWriter, r *http.Request) {
+	// When deleting, do not try to show the deleted entry but the context.
+	shownId := r.FormValue("context")
+	if shownId == "" {
+		shownId = r.FormValue("id")
+	}
+
 	var err error
 	if r.Method == http.MethodPost {
 		err = handleContainerPost(r)
@@ -128,7 +134,7 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 	var container *Container
 	children := indexChildren[""]
 
-	if c, ok := indexContainer[ContainerId(r.FormValue("id"))]; ok {
+	if c, ok := indexContainer[ContainerId(shownId)]; ok {
 		children = c.Children()
 		container = c
 	}
