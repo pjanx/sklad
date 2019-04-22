@@ -116,7 +116,7 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if r.Method == http.MethodPost {
 		if err = handleContainerPost(r); err == nil {
-			redirect := "container"
+			redirect := r.URL.EscapedPath()
 			if shownId != "" {
 				redirect += "?id=" + url.QueryEscape(shownId)
 			}
@@ -198,7 +198,7 @@ func handleSeries(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if r.Method == http.MethodPost {
 		if err = handleSeriesPost(r); err == nil {
-			http.Redirect(w, r, "series", http.StatusSeeOther)
+			http.Redirect(w, r, r.URL.EscapedPath(), http.StatusSeeOther)
 			return
 		}
 		// XXX: This is rather ugly.
