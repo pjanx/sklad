@@ -115,12 +115,15 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	if r.Method == http.MethodPost {
-		err = handleContainerPost(r)
-		// FIXME: This is rather ugly. When removing, we want to keep
-		// the context id, in addition to the id being changed.
-		// TODO: If there were no errors, redirect the user to GET,
-		// which is related to the previous comment.
-		// TODO: If there were errors, use the last data as a prefill.
+		if err = handleContainerPost(r); err == nil {
+			redirect := "container"
+			if shownId != "" {
+				redirect += "?id=" + url.QueryEscape(shownId)
+			}
+			http.Redirect(w, r, redirect, http.StatusSeeOther)
+			return
+		}
+		// TODO: Use the last data as a prefill.
 	} else if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -194,7 +197,10 @@ func handleSeriesPost(r *http.Request) error {
 func handleSeries(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if r.Method == http.MethodPost {
-		err = handleSeriesPost(r)
+		if err = handleSeriesPost(r); err == nil {
+			http.Redirect(w, r, "series", http.StatusSeeOther)
+			return
+		}
 		// XXX: This is rather ugly.
 		r.Form = url.Values{}
 	} else if r.Method != http.MethodGet {
