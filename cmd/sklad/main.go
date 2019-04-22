@@ -123,7 +123,6 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, redirect, http.StatusSeeOther)
 			return
 		}
-		// TODO: Use the last data as a prefill.
 	} else if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -132,14 +131,6 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 	allSeries := map[string]string{}
 	for _, s := range indexSeries {
 		allSeries[s.Prefix] = s.Description
-	}
-
-	var container *Container
-	children := indexChildren[""]
-
-	if c, ok := indexContainer[ContainerId(shownId)]; ok {
-		children = c.Children()
-		container = c
 	}
 
 	params := struct {
@@ -152,6 +143,9 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 		ErrorWouldContainItself         bool
 		ErrorContainerInUse             bool
 		Container                       *Container
+		NewDescription                  *string
+		NewSeries                       string
+		NewParent                       *string
 		Children                        []*Container
 		AllSeries                       map[string]string
 	}{
@@ -163,9 +157,23 @@ func handleContainer(w http.ResponseWriter, r *http.Request) {
 		ErrorCannotChangeNumber:         err == errCannotChangeNumber,
 		ErrorWouldContainItself:         err == errWouldContainItself,
 		ErrorContainerInUse:             err == errContainerInUse,
-		Container:                       container,
-		Children:                        children,
+		Children:                        indexChildren[""],
 		AllSeries:                       allSeries,
+	}
+	if c, ok := indexContainer[ContainerId(shownId)]; ok {
+		params.Children = c.Children()
+		params.Container = c
+	}
+	if description, ok := r.Form["description"]; ok {
+		params.NewDescription = &description[0]
+	}
+	if series, ok := r.Form["series"]; ok {
+		// It seems impossible to dereference strings in text/template so that
+		// `eq` can be used, and we don't actually need a null value here.
+		params.NewSeries = series[0]
+	}
+	if parent, ok := r.Form["parent"]; ok {
+		params.NewParent = &parent[0]
 	}
 
 	executeTemplate("container.tmpl", w, &params)

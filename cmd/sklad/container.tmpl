@@ -36,18 +36,19 @@
 		</form>
 	</header>
 	<form method=post action="container?id={{ .Container.Id }}">
-		<textarea name=description
-			rows="{{ max 5 (lines .Container.Description) }}"
+		{{- $description := or .NewDescription .Container.Description }}
+		<textarea name=description rows="{{ max 5 (lines $description) }}"
 			placeholder="Popis obalu nebo jeho obsahu">
-			{{- .Container.Description -}}
+			{{- $description -}}
 		</textarea>
 		<footer>
 			<div>
 				<label for=series>Řada:</label>
 				<select name=series id=series>
+				{{- $preselect := or .NewSeries .Container.Series }}
 				{{- range $prefix, $desc := .AllSeries }}
 					<option value="{{ $prefix }}"
-						{{ if eq $prefix $.Container.Series }}selected{{ end -}}
+						{{ if eq $prefix $preselect }}selected{{ end -}}
 						>{{ $prefix }} &mdash; {{ $desc }}</option>
 				{{- end }}
 				</select>
@@ -55,7 +56,7 @@
 			<div>
 				<label for=parent>Nadobal:</label>
 				<input type=text name=parent id=parent
-					value="{{ .Container.Parent }}">
+					value="{{ or .NewParent .Container.Parent }}">
 			</div>
 			<input type=submit value="Uložit">
 		</footer>
@@ -69,21 +70,27 @@
 		<h2>Nový obal</h2>
 	</header>
 	<form method=post action="container">
-		<textarea name=description rows=5
-			placeholder="Popis obalu nebo jeho obsahu"></textarea>
+		{{- $description := or .NewDescription "" }}
+		<textarea name=description rows="{{ max 5 (lines $description) }}"
+			placeholder="Popis obalu nebo jeho obsahu">
+			{{- $description -}}
+		</textarea>
 		<footer>
 			<div>
 				<label for=series>Řada:</label>
 				<select name=series id=series>
+				{{- $preselect := or .NewSeries "" }}
 				{{- range $prefix, $desc := .AllSeries }}
 					<option value="{{ $prefix }}"
+						{{ if eq $prefix $preselect }}selected{{ end -}}
 						>{{ $prefix }} &mdash; {{ $desc }}</option>
 				{{- end }}
 				</select>
 			</div>
 			<div>
 				<label for=parent>Nadobal:</label>
-				<input type=text name=parent id=parent value="">
+				<input type=text name=parent id=parent
+					value="{{ or .NewParent "" }}">
 			</div>
 			<input type=submit value="Uložit">
 		</footer>
