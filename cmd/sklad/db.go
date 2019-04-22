@@ -205,6 +205,13 @@ func dbContainerCreate(c *Container) error {
 }
 
 func dbContainerUpdate(c *Container, updated Container) error {
+	if _, ok := indexSeries[updated.Series]; !ok {
+		return errNoSuchSeries
+	}
+	if updated.Parent != "" && indexContainer[updated.Parent] == nil {
+		return errNoSuchContainer
+	}
+
 	newID := updated.Id()
 	if updated.Series != c.Series && len(c.Children()) > 0 {
 		return errCannotChangeSeriesNotEmpty
