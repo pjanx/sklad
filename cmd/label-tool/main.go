@@ -137,7 +137,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	if fontIndex, err = strconv.Atoi(r.FormValue("font")); err == nil {
 		font = fonts[fontIndex]
 	} else {
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmplFont.Execute(w, fonts); err != nil {
 			http.Error(w, err.Error(), 500)
 		}
@@ -217,7 +217,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, ok := r.Form["render"]; !ok {
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := tmplForm.Execute(w, &params); err != nil {
 			http.Error(w, err.Error(), 500)
 		}
