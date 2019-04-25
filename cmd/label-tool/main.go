@@ -38,7 +38,7 @@ var tmplForm = template.Must(template.New("form").Parse(`
 	<img border=1 src='?font={{ .FontIndex }}&amp;scale={{ .Scale }}{{/*
 	*/}}&amp;text={{ .Text }}&amp;render'>
 </td>
-<td valign=top>
+<td valign=top><form>
 	<fieldset>
 		{{ if .Printer }}
 
@@ -71,18 +71,26 @@ var tmplForm = template.Must(template.New("form").Parse(`
 		{{ end }}
 	</fieldset>
 	<fieldset>
-		<p>Font: {{ .Font.Name }} <a href='?'>Change</a>
-	</fieldset>
-	<form><fieldset>
-		<input type=hidden name=font value='{{ .FontIndex }}'>
-		<p><label for=text>Text:</label>
-			<input id=text name=text value='{{.Text}}'>
-			<label for=scale>Scale:</label>
+		<legend>Font</legend>
+		<p>{{ .Font.Name }} <a href='?'>Change</a>
+			<input type=hidden name=font value='{{ .FontIndex }}'>
+		<p><label for=scale>Scale:</label>
 			<input id=scale name=scale value='{{.Scale}}' size=1>
+	</fieldset>
+	<fieldset>
+		<legend>Label</legend>
+		<p><textarea name=text>{{.Text}}</textarea>
+		<p>Kind:
+			<input type=radio id=kind-text name=kind value=text
+				{{ if eq .Kind "text" }} checked{{ end }}>
+			<label for=kind-text>plain text (horizontal)</label>
+			<input type=radio id=kind-qr name=kind value=qr
+				{{ if eq .Kind "qr" }} checked{{ end }}>
+			<label for=kind-qr>QR code (vertical)</label>
 		<p><input type=submit value='Update'>
 			<input type=submit name=print value='Update and Print'>
-	</fieldset></form>
-</td>
+	</fieldset>
+</form></td>
 </tr></table>
 </body></html>
 `))
@@ -130,7 +138,9 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		font = fonts[fontIndex]
 	} else {
 		w.Header().Set("Content-Type", "text/html")
-		tmplFont.Execute(w, fonts)
+		if err := tmplFont.Execute(w, fonts); err != nil {
+			http.Error(w, err.Error(), 500)
+		}
 		return
 	}
 
@@ -170,6 +180,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		FontIndex  int
 		Text       string
 		Scale      int
+		Kind       string
 	}{
 		Printer:    printer,
 		PrinterErr: printerErr,
@@ -178,17 +189,26 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		Font:       font.Font,
 		FontIndex:  fontIndex,
 		Text:       r.FormValue("text"),
+		Kind:       r.FormValue("kind"),
 	}
 
 	params.Scale, err = strconv.Atoi(r.FormValue("scale"))
 	if err != nil {
 		params.Scale = 3
 	}
+	if params.Kind == "" {
+		params.Kind = "text"
+	}
 
 	var img image.Image
 	if mediaInfo != nil {
-		img = &imgutil.LeftRotate{Image: label.GenLabelForHeight(
-			font.Font, params.Text, mediaInfo.PrintAreaPins, params.Scale)}
+		if params.Kind == "qr" {
+			img = &imgutil.LeftRotate{Image: label.GenLabelForHeight(
+				font.Font, params.Text, mediaInfo.PrintAreaPins, params.Scale)}
+		} else {
+			img = label.GenLabelForWidth(
+				font.Font, params.Text, mediaInfo.PrintAreaPins, params.Scale)
+		}
 		if r.FormValue("print") != "" {
 			if err := printer.Print(img); err != nil {
 				log.Println("print error:", err)
@@ -198,7 +218,9 @@ func handle(w http.ResponseWriter, r *http.Request) {
 
 	if _, ok := r.Form["render"]; !ok {
 		w.Header().Set("Content-Type", "text/html")
-		tmplForm.Execute(w, &params)
+		if err := tmplForm.Execute(w, &params); err != nil {
+			http.Error(w, err.Error(), 500)
+		}
 		return
 	}
 
