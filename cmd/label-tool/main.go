@@ -4,6 +4,7 @@ import (
 	"errors"
 	"html/template"
 	"image"
+	"image/draw"
 	"image/png"
 	"log"
 	"net/http"
@@ -16,15 +17,26 @@ import (
 	"janouch.name/sklad/ql"
 )
 
-var font *bdf.Font
+var tmplFont = template.Must(template.New("font").Parse(`
+<!DOCTYPE html>
+<html><body>
+<h1>PT-CBP label printing tool</h1>
+<h2>Choose font</h2>
+{{ range $i, $f := . }}
+<p><a href='?font={{ $i }}'>
+<img src='?font={{ $i }}&amp;preview' title='{{ $f.Path }}'></a>
+{{ end }}
+</body></html>
+`))
 
-var tmpl = template.Must(template.New("form").Parse(`
+var tmplForm = template.Must(template.New("form").Parse(`
 <!DOCTYPE html>
 <html><body>
 <h1>PT-CBP label printing tool</h1>
 <table><tr>
 <td valign=top>
-	<img border=1 src='?img&amp;scale={{.Scale}}&amp;text={{.Text}}'>
+	<img border=1 src='?font={{ .FontIndex }}&amp;scale={{ .Scale }}{{/*
+	*/}}&amp;text={{ .Text }}&amp;render'>
 </td>
 <td valign=top>
 	<fieldset>
@@ -59,9 +71,10 @@ var tmpl = template.Must(template.New("form").Parse(`
 		{{ end }}
 	</fieldset>
 	<fieldset>
-		<p>Font: {{ .Font.Name }}
+		<p>Font: {{ .Font.Name }} <a href='?'>Change</a>
 	</fieldset>
 	<form><fieldset>
+		<input type=hidden name=font value='{{ .FontIndex }}'>
 		<p><label for=text>Text:</label>
 			<input id=text name=text value='{{.Text}}'>
 			<label for=scale>Scale:</label>
@@ -73,6 +86,14 @@ var tmpl = template.Must(template.New("form").Parse(`
 </tr></table>
 </body></html>
 `))
+
+type fontItem struct {
+	Path    string
+	Font    *bdf.Font
+	Preview image.Image
+}
+
+var fonts = []*fontItem{}
 
 func getPrinter() (*ql.Printer, error) {
 	printer, err := ql.Open()
@@ -96,8 +117,28 @@ func getStatus(printer *ql.Printer) error {
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), 500)
+	if r.Method == http.MethodGet {
+		w.Header().Set("Cache-Control", "no-store")
+	}
+
+	var (
+		font      *fontItem
+		fontIndex int
+		err       error
+	)
+	if fontIndex, err = strconv.Atoi(r.FormValue("font")); err == nil {
+		font = fonts[fontIndex]
+	} else {
+		w.Header().Set("Content-Type", "text/html")
+		tmplFont.Execute(w, fonts)
+		return
+	}
+
+	if _, ok := r.Form["preview"]; ok {
+		w.Header().Set("Content-Type", "image/png")
+		if err := png.Encode(w, font.Preview); err != nil {
+			http.Error(w, err.Error(), 500)
+		}
 		return
 	}
 
@@ -126,6 +167,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		InitErr    error
 		MediaInfo  *ql.MediaInfo
 		Font       *bdf.Font
+		FontIndex  int
 		Text       string
 		Scale      int
 	}{
@@ -133,11 +175,11 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		PrinterErr: printerErr,
 		InitErr:    initErr,
 		MediaInfo:  mediaInfo,
-		Font:       font,
+		Font:       font.Font,
+		FontIndex:  fontIndex,
 		Text:       r.FormValue("text"),
 	}
 
-	var err error
 	params.Scale, err = strconv.Atoi(r.FormValue("scale"))
 	if err != nil {
 		params.Scale = 3
@@ -146,7 +188,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	var img image.Image
 	if mediaInfo != nil {
 		img = &imgutil.LeftRotate{Image: label.GenLabelForHeight(
-			font, params.Text, mediaInfo.PrintAreaPins, params.Scale)}
+			font.Font, params.Text, mediaInfo.PrintAreaPins, params.Scale)}
 		if r.FormValue("print") != "" {
 			if err := printer.Print(img); err != nil {
 				log.Println("print error:", err)
@@ -154,9 +196,9 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _, ok := r.Form["img"]; !ok {
+	if _, ok := r.Form["render"]; !ok {
 		w.Header().Set("Content-Type", "text/html")
-		tmpl.Execute(w, &params)
+		tmplForm.Execute(w, &params)
 		return
 	}
 
@@ -173,24 +215,32 @@ func handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	if len(os.Args) != 3 {
-		log.Fatalf("usage: %s ADDRESS BDF-FILE\n", os.Args[0])
+	if len(os.Args) < 3 {
+		log.Fatalf("usage: %s ADDRESS BDF-FILE...\n", os.Args[0])
 	}
 
-	address, bdfPath := os.Args[1], os.Args[2]
+	address, bdfPaths := os.Args[1], os.Args[2:]
+	for _, path := range bdfPaths {
+		fi, err := os.Open(path)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		font, err := bdf.NewFromBDF(fi)
+		if err != nil {
+			log.Fatalf("%s: %s\n", path, err)
+		}
+		if err := fi.Close(); err != nil {
+			log.Fatalln(err)
+		}
 
-	var err error
-	fi, err := os.Open(bdfPath)
-	if err != nil {
-		log.Fatalln(err)
-	}
+		r, _ := font.BoundString(font.Name)
+		super := r.Inset(-3)
 
-	font, err = bdf.NewFromBDF(fi)
-	if err := fi.Close(); err != nil {
-		log.Fatalln(err)
-	}
-	if err != nil {
-		log.Fatalln(err)
+		img := image.NewRGBA(super)
+		draw.Draw(img, super, image.White, image.ZP, draw.Src)
+		font.DrawString(img, image.ZP, font.Name)
+
+		fonts = append(fonts, &fontItem{Path: path, Font: font, Preview: img})
 	}
 
 	log.Println("starting server")
