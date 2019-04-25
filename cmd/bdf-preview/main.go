@@ -20,21 +20,21 @@ type fontItem struct {
 var fonts = map[string]fontItem{}
 
 var tmpl = template.Must(template.New("list").Parse(`
-	<!DOCTYPE html>
-	<html><body>
-	<table border='1' cellpadding='3' style='border-collapse: collapse'>
-		<tr>
-			<th>Name</th>
-			<th>Preview</th>
-		<tr>
-{{range $k, $v := . }}
-		<tr>
-			<td>{{$k}}</td>
-			<td><img src='?name={{$k}}'></td>
-		</tr>
-{{end}}
-	</table>
-	</body></html>
+<!DOCTYPE html>
+<html><body>
+<table border='1' cellpadding='3' style='border-collapse: collapse'>
+	<tr>
+		<th>Name</th>
+		<th>Preview</th>
+	<tr>
+	{{- range $k, $v := . }}
+	<tr>
+		<td>{{ $k }}</td>
+		<td><img src='?name={{ $k }}'></td>
+	</tr>
+	{{- end }}
+</table>
+</body></html>
 `))
 
 func handle(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +87,7 @@ func main() {
 		fonts[filename] = fontItem{Font: font, Preview: img}
 	}
 
-	log.Println("Starting server")
+	log.Println("starting server")
 	http.HandleFunc("/", handle)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
