@@ -49,6 +49,8 @@ func (g *glyph) At(x, y int) color.Color {
 // Font represents a particular bitmap font.
 type Font struct {
 	Name     string
+	Ascent   int // needn't be present in the font
+	Descent  int // needn't be present in the font
 	glyphs   map[rune]glyph
 	fallback glyph
 }
@@ -192,16 +194,22 @@ func (p *bdfParser) readLine() bool {
 	return true
 }
 
-func (p *bdfParser) readCharEncoding() int {
+func (p *bdfParser) readIntegerArgument() int {
 	if len(p.tokens) < 2 {
 		panic("insufficient arguments")
 	}
 	if i, err := strconv.Atoi(p.tokens[1]); err != nil {
 		panic(err)
 	} else {
-		return i // Some fonts even use -1 for things outside the encoding.
+		return i
 	}
 }
+
+// Some fonts even use -1 for things outside the encoding.
+func (p *bdfParser) readCharEncoding() int { return p.readIntegerArgument() }
+
+// XXX: Ignoring vertical advance since we only expect purely horizontal fonts.
+func (p *bdfParser) readDwidth() int { return p.readIntegerArgument() }
 
 func (p *bdfParser) parseProperties() {
 	// The wording in the specification suggests that the argument
@@ -210,19 +218,11 @@ func (p *bdfParser) parseProperties() {
 		switch p.tokens[0] {
 		case "DEFAULT_CHAR":
 			p.defaultChar = p.readCharEncoding()
+		case "FONT_ASCENT":
+			p.font.Ascent = p.readIntegerArgument()
+		case "FONT_DESCENT":
+			p.font.Descent = p.readIntegerArgument()
 		}
-	}
-}
-
-// XXX: Ignoring vertical advance since we only expect purely horizontal fonts.
-func (p *bdfParser) readDwidth() int {
-	if len(p.tokens) < 2 {
-		panic("insufficient arguments")
-	}
-	if i, err := strconv.Atoi(p.tokens[1]); err != nil {
-		panic(err)
-	} else {
-		return i
 	}
 }
 

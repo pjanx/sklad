@@ -51,6 +51,13 @@ func GenLabelForHeight(font *bdf.Font,
 	return combinedImg
 }
 
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func GenLabelForWidth(font *bdf.Font,
 	text string, width, scale int) image.Image {
 	var lines []string
@@ -58,30 +65,43 @@ func GenLabelForWidth(font *bdf.Font,
 		lines = append(lines, strings.TrimSuffix(line, "\r"))
 	}
 
-	height := 0
-	var rects []image.Rectangle
-	for _, line := range lines {
+	// Respect font ascent and descent so that there are gaps between lines.
+	rects := make([]image.Rectangle, len(lines))
+	jumps := make([]int, len(lines))
+	for i, line := range lines {
 		r, _ := font.BoundString(line)
-		rects = append(rects, r)
-		height += r.Dy() * scale
+		rects[i] = r
+
+		if i > 0 {
+			deficitD := font.Descent - rects[i-1].Max.Y
+			jumps[i] += max(0, deficitD)
+			deficitA := font.Ascent - (-r.Min.Y)
+			jumps[i] += max(0, deficitA)
+		}
 	}
 
-	imgRect := image.Rect(0, 0, width, height)
+	height := 0
+	for i := range lines {
+		height += jumps[i] + rects[i].Dy()
+	}
+
+	imgRect := image.Rect(0, 0, width, height*scale)
 	img := image.NewRGBA(imgRect)
 	draw.Draw(img, imgRect, image.White, image.ZP, draw.Src)
 
 	y := 0
-	for i := 0; i < len(lines); i++ {
+	for i, line := range lines {
 		textImg := image.NewRGBA(rects[i])
 		draw.Draw(textImg, rects[i], image.White, image.ZP, draw.Src)
-		font.DrawString(textImg, image.ZP, lines[i])
+		font.DrawString(textImg, image.ZP, line)
 
 		scaledImg := imgutil.Scale{Image: textImg, Scale: scale}
 		scaledRect := scaledImg.Bounds()
 
-		target := image.Rect(0, y, imgRect.Max.X, imgRect.Max.Y)
+		y += jumps[i]
+		target := image.Rect(0, y*scale, imgRect.Max.X, imgRect.Max.Y)
 		draw.Draw(img, target, &scaledImg, scaledRect.Min, draw.Src)
-		y += scaledRect.Dy()
+		y += rects[i].Dy()
 	}
 	return img
 }
