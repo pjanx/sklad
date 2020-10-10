@@ -298,6 +298,7 @@ func loadDatabase() error {
 	if err != nil {
 		return err
 	}
+	defer dbFile.Close()
 	if err := json.NewDecoder(dbFile).Decode(&db); err != nil {
 		return err
 	}
