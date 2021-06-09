@@ -2,6 +2,7 @@ package label
 
 import (
 	"image"
+	"image/color"
 	"image/draw"
 	"strings"
 
@@ -19,7 +20,7 @@ func GenLabelForHeight(font *bdf.Font,
 	textRect, _ := font.BoundString(text)
 	textImg := image.NewRGBA(textRect)
 	draw.Draw(textImg, textRect, image.White, image.ZP, draw.Src)
-	font.DrawString(textImg, image.ZP, text)
+	font.DrawString(textImg, image.ZP, color.Black, text)
 
 	scaledTextImg := imgutil.Scale{Image: textImg, Scale: scale}
 	scaledTextRect := scaledTextImg.Bounds()
@@ -93,7 +94,7 @@ func GenLabelForWidth(font *bdf.Font,
 	for i, line := range lines {
 		textImg := image.NewRGBA(rects[i])
 		draw.Draw(textImg, rects[i], image.White, image.ZP, draw.Src)
-		font.DrawString(textImg, image.ZP, line)
+		font.DrawString(textImg, image.ZP, color.Black, line)
 
 		scaledImg := imgutil.Scale{Image: textImg, Scale: scale}
 		scaledRect := scaledImg.Bounds()

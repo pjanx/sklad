@@ -2,6 +2,7 @@ package main
 
 import (
 	"image"
+	"image/color"
 	"image/draw"
 	"image/png"
 	"log"
@@ -26,7 +27,7 @@ func main() {
 
 	img := image.NewRGBA(super)
 	draw.Draw(img, super, image.White, image.ZP, draw.Src)
-	font.DrawString(img, image.ZP, font.Name)
+	font.DrawString(img, image.ZP, color.Black, font.Name)
 
 	fo, err := os.Create("out.png")
 	if err != nil {

@@ -66,11 +66,13 @@ func (f *Font) FindGlyph(r rune) (glyph, bool) {
 
 // DrawString draws the specified text string onto dst horizontally along
 // the baseline starting at dp, using black color.
-func (f *Font) DrawString(dst draw.Image, dp image.Point, s string) {
+func (f *Font) DrawString(dst draw.Image, dp image.Point,
+	color color.Color, s string) {
+	src := image.NewUniform(color)
 	for _, r := range s {
 		g, _ := f.FindGlyph(r)
 		draw.DrawMask(dst, g.bounds.Add(dp),
-			image.Black, image.ZP, &g, g.bounds.Min, draw.Over)
+			src, image.ZP, &g, g.bounds.Min, draw.Over)
 		dp.X += g.advance
 	}
 }
