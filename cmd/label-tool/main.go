@@ -211,7 +211,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 				font.Font, params.Text, mediaInfo.PrintAreaPins, params.Scale)
 		}
 		if r.FormValue("print") != "" {
-			if err := printer.Print(img); err != nil {
+			if err := printer.Print(img, false); err != nil {
 				log.Println("print error:", err)
 			}
 		}

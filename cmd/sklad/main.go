@@ -309,7 +309,7 @@ func printLabel(id string) error {
 	}
 
 	return printer.Print(&imgutil.LeftRotate{Image: label.GenLabelForHeight(
-		labelFont, id, mediaInfo.PrintAreaPins, db.BDFScale)})
+		labelFont, id, mediaInfo.PrintAreaPins, db.BDFScale)}, false)
 }
 
 func handleLabel(w http.ResponseWriter, r *http.Request) {

@@ -172,8 +172,8 @@ var errErrorOccurred = errors.New("error occurred")
 var errUnexpectedStatus = errors.New("unexpected status")
 var errUnknownMedia = errors.New("unknown media")
 
-func (p *Printer) Print(image image.Image) error {
-	data := makePrintData(p.LastStatus, image)
+func (p *Printer) Print(image image.Image, rb bool) error {
+	data := makePrintData(p.LastStatus, image, rb)
 	if data == nil {
 		return errUnknownMedia
 	}

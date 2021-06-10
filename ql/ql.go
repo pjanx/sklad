@@ -120,9 +120,67 @@ const (
 	printPins  = printBytes * 8
 )
 
+// pack packs a bool array into a byte array for the printer to print out.
+func pack(data [printPins]bool, out *[]byte) {
+	for i := 0; i < printBytes; i++ {
+		var b byte
+		for j := 0; j < 8; j++ {
+			b <<= 1
+			if data[i*8+j] {
+				b |= 1
+			}
+		}
+		*out = append(*out, b)
+	}
+}
+
+// makeBitmapDataRB converts an image to the printer's red-black raster format.
+func makeBitmapDataRB(src image.Image, margin, length int) []byte {
+	data, bounds := []byte{}, src.Bounds()
+	if bounds.Dy() > length {
+		bounds.Max.Y = bounds.Min.Y + length
+	}
+	if bounds.Dx() > printPins-margin {
+		bounds.Max.X = bounds.Min.X + printPins
+	}
+
+	redcells, blackcells := [printPins]bool{}, [printPins]bool{}
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		length--
+
+		// The graphics needs to be inverted horizontally, iterating backwards.
+		offset := margin
+		for x := bounds.Max.X - 1; x >= bounds.Min.X; x-- {
+			r, g, b, a := src.At(x, y).RGBA()
+			redcells[offset] = r >= 0xc000 && g < 0x4000 && b < 0x4000 &&
+				a >= 0x8000
+			blackcells[offset] = r < 0x4000 && g < 0x4000 && b < 0x4000 &&
+				a >= 0x8000
+			offset++
+		}
+
+		data = append(data, 'w', 0x01, printBytes)
+		pack(blackcells, &data)
+		data = append(data, 'w', 0x02, printBytes)
+		pack(redcells, &data)
+	}
+	for ; length > 0; length-- {
+		data = append(data, 'w', 0x01, printBytes)
+		data = append(data, make([]byte, printBytes)...)
+		data = append(data, 'w', 0x02, printBytes)
+		data = append(data, make([]byte, printBytes)...)
+	}
+	return data
+}
+
 // makeBitmapData converts an image to the printer's raster format.
-func makeBitmapData(src image.Image, margin, length int) (data []byte) {
-	bounds := src.Bounds()
+func makeBitmapData(src image.Image, rb bool, margin, length int) []byte {
+	// It's a necessary nuisance, so just copy and paste.
+	if rb {
+		return makeBitmapDataRB(src, margin, length)
+	}
+
+	data, bounds := []byte{}, src.Bounds()
 	if bounds.Dy() > length {
 		bounds.Max.Y = bounds.Min.Y + length
 	}
@@ -138,30 +196,24 @@ func makeBitmapData(src image.Image, margin, length int) (data []byte) {
 		offset := margin
 		for x := bounds.Max.X - 1; x >= bounds.Min.X; x-- {
 			r, g, b, a := src.At(x, y).RGBA()
-			pixels[offset] = r == 0 && g == 0 && b == 0 && a >= 0x8000
+			pixels[offset] = r < 0x4000 && g < 0x4000 && b < 0x4000 &&
+				a >= 0x8000
 			offset++
 		}
 
 		data = append(data, 'g', 0x00, printBytes)
-		for i := 0; i < printBytes; i++ {
-			var b byte
-			for j := 0; j < 8; j++ {
-				b <<= 1
-				if pixels[i*8+j] {
-					b |= 1
-				}
-			}
-			data = append(data, b)
-		}
+		pack(pixels, &data)
 	}
 	for ; length > 0; length-- {
 		data = append(data, 'g', 0x00, printBytes)
 		data = append(data, make([]byte, printBytes)...)
 	}
-	return
+	return data
 }
 
-func makePrintData(status *Status, image image.Image) (data []byte) {
+// XXX: It would be preferrable to know for certain if this is a red-black tape,
+// because the printer refuses to print on a mismatch.
+func makePrintData(status *Status, image image.Image, rb bool) (data []byte) {
 	mediaInfo := GetMediaInfo(
 		status.MediaWidthMM(),
 		status.MediaLengthMM(),
@@ -198,7 +250,11 @@ func makePrintData(status *Status, image image.Image) (data []byte) {
 
 	// Cut at end (though it's the default).
 	// Not sure what it means, doesn't seem to have any effect to turn it off.
-	data = append(data, 0x1b, 0x69, 0x4b, 0x08)
+	if rb {
+		data = append(data, 0x1b, 0x69, 0x4b, 0x08|0x01)
+	} else {
+		data = append(data, 0x1b, 0x69, 0x4b, 0x08)
+	}
 
 	if status.MediaLengthMM() != 0 {
 		// 3mm margins along the direction of feed. 0x23 = 35 dots, the minimum.
@@ -213,7 +269,8 @@ func makePrintData(status *Status, image image.Image) (data []byte) {
 	data = append(data, 0x4d, 0x00)
 
 	// The graphics data itself.
-	data = append(data, makeBitmapData(image, mediaInfo.SideMarginPins, dy)...)
+	bitmapData := makeBitmapData(image, rb, mediaInfo.SideMarginPins, dy)
+	data = append(data, bitmapData...)
 
 	// Print command with feeding.
 	return append(data, 0x1a)

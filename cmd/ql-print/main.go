@@ -17,6 +17,7 @@ import (
 
 var scale = flag.Int("scale", 1, "integer upscaling")
 var rotate = flag.Bool("rotate", false, "print sideways")
+var redblack = flag.Bool("redblack", false, "red and black print")
 
 func main() {
 	flag.Usage = func() {
@@ -82,7 +83,7 @@ func main() {
 		log.Fatalln("the image is too high,", dy, ">", mi.PrintAreaLength, "pt")
 	}
 
-	if err := p.Print(img); err != nil {
+	if err := p.Print(img, *redblack); err != nil {
 		log.Fatalln(err)
 	}
 }
