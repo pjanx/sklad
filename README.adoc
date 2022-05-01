@@ -19,6 +19,7 @@ Runtime dependencies: Linux, a Brother QL label printer connected over USB
  $ go get -u https://janouch.name/sklad/cmd/sklad
 
 You will need to bootstrap the database by writing a minimal 'db.json':
+
 ....
 {
 	"Password": "login-password",
