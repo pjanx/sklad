@@ -240,8 +240,17 @@ func makePrintData(status *Status, image image.Image, rb bool) (data []byte) {
 		mediaType = byte(0x0b)
 	}
 
-	data = append(data, 0x1b, 0x69, 0x7a, 0x02|0x04|0x40|0x80, mediaType,
-		byte(status.MediaWidthMM()), byte(status.MediaLengthMM()),
+	const (
+		flagValidMediaType    = 0x02
+		flagValidMediaWidth   = 0x04
+		flagValidMediaLength  = 0x08
+		flagPriorityToQuality = 0x40
+		flagRecoveryAlwaysOn  = 0x80
+	)
+	data = append(data, 0x1b, 0x69, 0x7a, flagValidMediaType|
+		flagValidMediaWidth|flagValidMediaLength|
+		flagPriorityToQuality|flagRecoveryAlwaysOn,
+		mediaType, byte(status.MediaWidthMM()), byte(status.MediaLengthMM()),
 		byte(dy), byte(dy>>8), byte(dy>>16), byte(dy>>24), 0, 0x00)
 
 	// Auto cut, each 1 label.
@@ -256,7 +265,7 @@ func makePrintData(status *Status, image image.Image, rb bool) (data []byte) {
 		data = append(data, 0x1b, 0x69, 0x4b, 0x08)
 	}
 
-	if status.MediaLengthMM() != 0 {
+	if status.MediaLengthMM() == 0 {
 		// 3mm margins along the direction of feed. 0x23 = 35 dots, the minimum.
 		data = append(data, 0x1b, 0x69, 0x64, 0x23, 0x00)
 	} else {
